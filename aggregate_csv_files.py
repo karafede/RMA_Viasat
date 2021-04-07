@@ -275,6 +275,21 @@ print(now2 - now1)
 
 all_idterms.drop_duplicates(['idterm'], inplace=True)
 
+
+
+### get all terminals corresponding to 'cars' and 'fleet' (from routecheck_2019)
+count_idterm = pd.read_sql_query('''
+              SELECT vehtype, COUNT(*)
+              /*FROM public.routecheck_november_2019*/
+              FROM public.dataraw 
+              group by vehtype ''', conn_HAIG)
+
+count_vehtype = pd.read_sql_query('''
+              SELECT vehtype, COUNT(*)
+              FROM public.idterm_portata 
+              group by vehtype ''', conn_HAIG)
+
+
 ################################################################
 ################################################################
 all_idterms.head()
