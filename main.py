@@ -1,10 +1,14 @@
 
 import os
+import pandas as pd
 from load_DB import obu
 from load_DB import upload_DB
 from load_DB import idterm_vehtype_portata
+from routecheck_viasat_ROMA_FK import func
 import glob
 import db_connect
+import sqlalchemy as sal
+import multiprocessing as mp
 
 os.chdir('D:/ViaSat/VIASAT_RM/obu')
 cwd = os.getcwd()
@@ -70,4 +74,99 @@ conn_HAIG.commit()
 #### create table with 'idterm', 'vehtype' and 'portata' and load into the DB ##########
 
 idterm_vehtype_portata()   # long time run...
+
+#########################################################################################
+##### create table routecheck ###########################################################
+
+## multiprocess.....
+os.chdir('D:/ENEA_CAS_WORK/ROMA_2019')
+os.getcwd()
+
+# Create an SQL connection engine to the output DB
+engine = sal.create_engine('postgresql://postgres:superuser@10.0.0.1:5432/HAIG_Viasat_RM_2019')
+
+# get all ID terminal of Viasat data
+all_VIASAT_IDterminals = pd.read_sql_query(
+    ''' SELECT *
+        FROM public.obu''', conn_HAIG)
+all_VIASAT_IDterminals['idterm'] = all_VIASAT_IDterminals['idterm'].astype('Int64')
+all_VIASAT_IDterminals['anno'] = all_VIASAT_IDterminals['anno'].astype('Int64')
+all_VIASAT_IDterminals['portata'] = all_VIASAT_IDterminals['portata'].astype('Int64')
+
+# make a list of all IDterminals (GPS ID of Viasata data) each ID terminal (track) represent a distinct vehicle
+all_ID_TRACKS = list(all_VIASAT_IDterminals.idterm.unique())
+
+
+## pool = mp.Pool(processes=mp.cpu_count()) ## use all available processors
+pool = mp.Pool(processes=10)     ## use 55 processors
+print("++++++++++++++++ POOL +++++++++++++++++", pool)
+## use the function "func" defined in "routecheck_viasat_ROMA_FK.py" to run multitocessing...
+results = pool.map(func, [(last_track_idx, track_ID) for last_track_idx, track_ID in enumerate(all_ID_TRACKS)])
+pool.close()
+pool.join()
+
+'''
+### to terminate multiprocessing
+pool.terminate()
+'''
+
+
+## add indices ######
+
+cur_HAIG.execute("""
+CREATE index routecheck_2019_id_idx on public.routecheck_2019("id");
+""")
+conn_HAIG.commit()
+
+
+cur_HAIG.execute("""
+CREATE index routecheck_2019_idterm_idx on public.routecheck_2019("idterm");
+""")
+conn_HAIG.commit()
+
+
+
+cur_HAIG.execute("""
+CREATE index routecheck_2019_TRIP_ID_idx on public.routecheck_2019("TRIP_ID");
+""")
+conn_HAIG.commit()
+
+
+
+cur_HAIG.execute("""
+CREATE index routecheck_2019_timedate_idx on public.routecheck_2019("timedate");
+""")
+conn_HAIG.commit()
+
+
+cur_HAIG.execute("""
+CREATE index routecheck_2019_grade_idx on public.routecheck_2019("grade");
+""")
+conn_HAIG.commit()
+
+
+
+cur_HAIG.execute("""
+CREATE index routecheck_2019_anomaly_idx on public.routecheck_2019("anomaly");
+""")
+conn_HAIG.commit()
+
+
+cur_HAIG.execute("""
+CREATE index routecheck_2019_speed_idx on public.routecheck_2019("speed");
+""")
+conn_HAIG.commit()
+
+
+
+cur_HAIG.execute("""
+CREATE index routecheck_2019_lat_idx on public.routecheck_2019(latitude);
+""")
+conn_HAIG.commit()
+
+
+cur_HAIG.execute("""
+CREATE index routecheck_2019_lon_idx on public.routecheck_2019(longitude);
+""")
+conn_HAIG.commit()
 
