@@ -59,23 +59,25 @@ engine = sal.create_engine('postgresql://postgres:superuser@10.0.0.1:5432/HAIG_V
 
 ## create extension postgis on the database HAIG_Viasat_RM_2019  (only one time)
 # erase existing table
-# cur_HAIG.execute("DROP TABLE IF EXISTS routecheck_2019 CASCADE")
+# cur_HAIG.execute("DROP TABLE IF EXISTS routecheck CASCADE")
 # conn_HAIG.commit()
 
 
 # get all ID terminal of Viasat data
 all_VIASAT_IDterminals = pd.read_sql_query(
     ''' SELECT *
-        FROM public.obu''', conn_HAIG)
+        FROM public.idterm_portata ''', conn_HAIG)
 all_VIASAT_IDterminals['idterm'] = all_VIASAT_IDterminals['idterm'].astype('Int64')
-all_VIASAT_IDterminals['anno'] = all_VIASAT_IDterminals['anno'].astype('Int64')
 all_VIASAT_IDterminals['portata'] = all_VIASAT_IDterminals['portata'].astype('Int64')
 
 # make a list of all IDterminals (GPS ID of Viasata data) each ID terminal (track) represent a distinct vehicle
 all_ID_TRACKS = list(all_VIASAT_IDterminals.idterm.unique())
 
-# track_ID = '4339395'
-
+# track_ID = '2704220'   ### fleet
+# track_ID = '4457330'   ### car
+# track_ID = '4137321'   ### car
+# track_ID = '2750102'
+# track_ID = '2704220'
 
 def func(arg):
     last_track_idx, track_ID = arg
@@ -89,7 +91,8 @@ def func(arg):
                 SELECT * FROM public.dataraw 
                 WHERE idterm = '%s' ''' % track_ID, conn_HAIG)
     # remove duplicate GPS tracks (@ same position)
-    viasat_data.drop_duplicates(['latitude', 'longitude'], inplace=True)
+    viasat_data.drop_duplicates(['latitude', 'longitude', 'timedate'], inplace=True, keep='last')
+    #  viasat_data.drop_duplicates(['timedate'], inplace=True, keep='last')
     # sort data by timedate:
     viasat_data['timedate'] = viasat_data['timedate'].astype('datetime64[ns]')
     # sort by 'timedate'
@@ -105,8 +108,8 @@ def func(arg):
 ########################################################################################
 ########################################################################################
 
-    # if len(viasat_data) > 5  and len(viasat_data) < 90:
-    if (len(viasat_data) > 3) and sum(viasat_data.progressive)> 0:  # <----
+    # if (len(viasat_data) > 3) and sum(viasat_data.progressive)> 0:  # <----
+    if len(viasat_data) > 0:  # <----
         fields = ["id", "longitude", "latitude", "progressive", 'panel', 'grade', "timedate", "speed", "vehtype"]
         # viasat = pd.read_csv(viasat_data, usecols=fields)
         viasat = viasat_data[fields]
@@ -157,13 +160,25 @@ def func(arg):
             viasat1 = viasat
             ## compute difference in seconds between two consecutive tracks
             diff_time = viasat.path_time.diff()
+            viasat_data['next_speed'] = viasat_data.speed.shift(-1)
+            viasat_data['next_progressive'] = viasat_data.progressive.shift(-1)
             diff_time = diff_time.fillna(0)
             VIASAT_TRIPS_by_ID = pd.DataFrame([])
             row = []
             ## define a list with the starting indices of each new TRIP
             for i in range(len(diff_time)):
-                if diff_time.iloc[i] >= 600:
-                    row.append(i)
+                if viasat_data.vehtype.iloc[0] == 1:
+                    if (diff_time.iloc[i] >= 180
+                            and (viasat_data.panel.iloc[i - 1] == 0 or
+                                 viasat_data.panel.iloc[i] == 0)):
+                        row.append(i)
+                if viasat_data.vehtype.iloc[0] == 2:
+                    if (diff_time.iloc[i] >= 180
+                            and (viasat_data.panel.iloc[i - 1] == 0 or
+                                 viasat_data.panel.iloc[i] == 0)
+                            and (viasat_data.next_speed.iloc[i] > 0 and
+                                 viasat_data.speed.iloc[i] == 0)):
+                        row.append(i)
             # get next element of the list row
             if len(row)>0:
                 row.append("end")
@@ -204,16 +219,19 @@ def func(arg):
                         viasat['TRIP_ID'] = TRIP_ID
                         viasat['idtrajectory'] = viasat.id.iloc[0]
                         # print(viasat)
-                        ## if first "progressive > 0 and panel == 0, then remove
-                        if (viasat.iloc[0].progressive > 0 & viasat.iloc[0].panel == 0):
-                            viasat = viasat.drop(viasat.index[[0]])
+                        ## if first "progressive > 0 and panel == 0, then remove (not true for fleets)
+                        # if (viasat.iloc[0].progressive > 0 & viasat.iloc[0].panel == 0 & viasat.iloc[0].vehtype == 1):
+                        #    viasat = viasat.drop(viasat.index[[0]])
                         ## append all TRIPS by ID
                         VIASAT_TRIPS_by_ID = VIASAT_TRIPS_by_ID.append(viasat)
+
 
                     #############################################
                     ### add anomaly codes from Carlo Liberto ####
                     #############################################
 
+                        # VIASAT_TRIPS_by_ID = VIASAT_TRIPS_by_ID[
+                        #    ~((VIASAT_TRIPS_by_ID['panel'] == 0) & (VIASAT_TRIPS_by_ID['speed'] == 0))]
                         # final_TRIPS = pd.DataFrame([])
                         ## get unique trips
                         ### get counts for selected edges ###
@@ -233,161 +251,151 @@ def func(arg):
                         ## loop all over the TRIPS
                         for idx_trip, trip in enumerate(all_TRIPS):
                             VIASAT_TRIP = VIASAT_TRIPS_by_ID[VIASAT_TRIPS_by_ID.TRIP_ID == trip]
-                            diff_path_time = VIASAT_TRIP.path_time.diff()
-                            diff_path_time = diff_path_time.fillna(0)
-                            row_path_time = []
-                            for i in range(len(diff_path_time)):
-                                if diff_path_time.iloc[i] > 300:   ## seconds
-                                    row_path_time.append(i)
-                                    ## get all data from the last index till the end of the data
-                            if len(row_path_time) > 0:
-                                VIASAT_TRIP = VIASAT_TRIP[max(row_path_time):len(VIASAT_TRIP)]
-                            else:
-                                VIASAT_TRIP.reset_index(drop=True, inplace=True)
-                                # print(VIASAT_TRIP)
-                                timeDiff = VIASAT_TRIP.totalseconds.iloc[0] - VIASAT_TRIP.last_totalseconds.iloc[0]
-                                progr = VIASAT_TRIP.progressive.iloc[0] - VIASAT_TRIP.last_progressive.iloc[0]
-                                for idx_row, row in VIASAT_TRIP.iterrows():
-                                    coords_1 = (row.latitude, row.longitude)
-                                    coords_2 = (row.last_lat, row.last_lon)
-                                    lDist = (geopy.distance.geodesic(coords_1, coords_2).km)*1000  # in meters
-                                    ####### PANEL ###################################################
-                                    if (row.panel == 1 and row.last_panel == 1):  # errore on-on
-                                        s = (list(row.anomaly))
-                                        s[0] = "E"
-                                        s = "".join(s)
-                                        VIASAT_TRIP.at[len(VIASAT_TRIP)-1, "anomaly"] = s
-                                        # set the intermediates anomaly to "I"
-                                        s = (list(row.anomaly))
-                                        s[0] = "I"
-                                        s = "".join(s)
-                                        VIASAT_TRIP["anomaly"].iloc[idx_row] = s
-                                        s = (list(row.anomaly))
-                                        s[0] = "S"
-                                        s = "".join(s)
-                                        VIASAT_TRIP.at[0, "anomaly"] = s
-                                # final_TRIPS = final_TRIPS.append(VIASAT_TRIP)
+                            VIASAT_TRIP.reset_index(drop=True, inplace=True)
+                            # print(VIASAT_TRIP)
+                            timeDiff = VIASAT_TRIP.totalseconds.iloc[0] - VIASAT_TRIP.last_totalseconds.iloc[0]
+                            progr = VIASAT_TRIP.progressive.iloc[0] - VIASAT_TRIP.last_progressive.iloc[0]
 
-                                    elif (row.panel == 0 and row.last_panel == -1):
-                                        s = (list(row.anomaly))
-                                        s[0] = "E"
-                                        s = "".join(s)
-                                        # VIASAT_TRIP.at[0, "anomaly"] = s
-                                        VIASAT_TRIP["anomaly"].iloc[idx_row] = s
-                                # final_TRIPS = final_TRIPS.append(VIASAT_TRIP)
-                                    elif (row.panel == 0 and row.last_panel == 0):  # off-off
-                                        s = (list(row.anomaly))
-                                        s[0] = "E"
-                                        s = "".join(s)
-                                        # VIASAT_TRIP.at[0, "anomaly"] = s
-                                        VIASAT_TRIP["anomaly"].iloc[idx_row] = s
-                                        s = (list(row.anomaly))
-                                        s[0] = "E"
-                                        s = "".join(s)
-                                        VIASAT_TRIP.at[len(VIASAT_TRIP) - 1, "anomaly"] = s
-                                    elif (row.panel == 0 and row.last_panel == 1):  # ON-off
-                                        s = (list(row.anomaly))
-                                        s[0] = "E"
-                                        s = "".join(s)
-                                        VIASAT_TRIP["anomaly"].iloc[idx_row] = s
-                                # final_TRIPS = final_TRIPS.append(VIASAT_TRIP)
+                            for idx_row, row in VIASAT_TRIP.iterrows():
+                                coords_1 = (row.latitude, row.longitude)
+                                coords_2 = (row.last_lat, row.last_lon)
+                                lDist = (geopy.distance.geodesic(coords_1, coords_2).km)*1000  # in meters
+                                ####### PANEL ###################################################
+                                if (row.panel == 1 and row.last_panel == 1):  # errore on-on
+                                    s = (list(row.anomaly))
+                                    s[0] = "E"
+                                    s = "".join(s)
+                                    VIASAT_TRIP.at[len(VIASAT_TRIP)-1, "anomaly"] = s
+                                    # set the intermediates anomaly to "I"
+                                    s = (list(row.anomaly))
+                                    s[0] = "I"
+                                    s = "".join(s)
+                                    VIASAT_TRIP["anomaly"].iloc[idx_row] = s
+                                    s = (list(row.anomaly))
+                                    s[0] = "S"
+                                    s = "".join(s)
+                                    VIASAT_TRIP.at[0, "anomaly"] = s
+                            # final_TRIPS = final_TRIPS.append(VIASAT_TRIP)
 
-                                    elif (row.panel == 1 and row.last_panel == -1):
-                                        s = (list(row.anomaly))
-                                        s[0] = "I"
-                                        s = "".join(s)
-                                        # VIASAT_TRIP.at[0, "anomaly"] = s
-                                        VIASAT_TRIP["anomaly"].iloc[idx_row] = s
-                                        # print(VIASAT_TRIP)
-                                # final_TRIPS = final_TRIPS.append(VIASAT_TRIP)
-                                    elif (row.panel == 1 and row.last_panel == 0):
-                                        s = (list(row.anomaly))
-                                        s[0] = "E"
-                                        s = "".join(s)
-                                        VIASAT_TRIP.at[len(VIASAT_TRIP)-1, "anomaly"] = s
-                                        s = (list(row.anomaly))
-                                        s[0] = "S"
-                                        s = "".join(s)
-                                        # VIASAT_TRIP.at[0, "anomaly"] = s
-                                        VIASAT_TRIP["anomaly"].iloc[idx_row] = s
-                                        # print(VIASAT_TRIP)
-                                # final_TRIPS = final_TRIPS.append(VIASAT_TRIP)
+                                elif (row.panel == 0 and row.last_panel == -1):
+                                    s = (list(row.anomaly))
+                                    s[0] = "E"
+                                    s = "".join(s)
+                                    # VIASAT_TRIP.at[0, "anomaly"] = s
+                                    VIASAT_TRIP["anomaly"].iloc[idx_row] = s
+                            # final_TRIPS = final_TRIPS.append(VIASAT_TRIP)
+                                elif (row.panel == 0 and row.last_panel == 0):  # off-off
+                                    s = (list(row.anomaly))
+                                    s[0] = "E"
+                                    s = "".join(s)
+                                    # VIASAT_TRIP.at[0, "anomaly"] = s
+                                    VIASAT_TRIP["anomaly"].iloc[idx_row] = s
+                                    s = (list(row.anomaly))
+                                    s[0] = "E"
+                                    s = "".join(s)
+                                    VIASAT_TRIP.at[len(VIASAT_TRIP) - 1, "anomaly"] = s
+                                elif (row.panel == 0 and row.last_panel == 1):  # ON-off
+                                    s = (list(row.anomaly))
+                                    s[0] = "E"
+                                    s = "".join(s)
+                                    VIASAT_TRIP["anomaly"].iloc[idx_row] = s
+                            # final_TRIPS = final_TRIPS.append(VIASAT_TRIP)
 
-                              ####### TRAVEL time > 10 min ###############################################
-                                    if (row.last_panel ==1 and row.panel ==1 and timeDiff > 10*60):
-                                        s = list(VIASAT_TRIP.iloc[0].anomaly)
-                                        s[0] = "S"
-                                        s[4] = "T"
-                                        s = "".join(s)
-                                        VIASAT_TRIP.at[0, "anomaly"] = s
-                                        s = list(VIASAT_TRIP.iloc[len(VIASAT_TRIP) - 1].anomaly)
-                                        s[0] = "E"
-                                        s[4] = "T"
-                                        s = "".join(s)
-                                        VIASAT_TRIP.at[len(VIASAT_TRIP) - 1, "anomaly"] = s
-                                # final_TRIPS = final_TRIPS.append(VIASAT_TRIP)
+                                elif (row.panel == 1 and row.last_panel == -1):
+                                    s = (list(row.anomaly))
+                                    s[0] = "I"
+                                    s = "".join(s)
+                                    # VIASAT_TRIP.at[0, "anomaly"] = s
+                                    VIASAT_TRIP["anomaly"].iloc[idx_row] = s
+                                    # print(VIASAT_TRIP)
+                            # final_TRIPS = final_TRIPS.append(VIASAT_TRIP)
+                                elif (row.panel == 1 and row.last_panel == 0):
+                                    s = (list(row.anomaly))
+                                    s[0] = "E"
+                                    s = "".join(s)
+                                    VIASAT_TRIP.at[len(VIASAT_TRIP)-1, "anomaly"] = s
+                                    s = (list(row.anomaly))
+                                    s[0] = "S"
+                                    s = "".join(s)
+                                    # VIASAT_TRIP.at[0, "anomaly"] = s
+                                    VIASAT_TRIP["anomaly"].iloc[idx_row] = s
+                                    # print(VIASAT_TRIP)
+                            # final_TRIPS = final_TRIPS.append(VIASAT_TRIP)
 
-                                    if (row.grade <= 15):
-                                        s = list(VIASAT_TRIP.iloc[idx_row].anomaly)
-                                        s[1] = "Q"
-                                        s = "".join(s)
-                                        VIASAT_TRIP["anomaly"].iloc[idx_row] = s
-                                    elif (row.grade > 15):
-                                        s = list(VIASAT_TRIP.iloc[idx_row].anomaly)
-                                        s[1] = "q"
-                                        s = "".join(s)
-                                        VIASAT_TRIP["anomaly"].iloc[idx_row] = s
-                                    if (lDist > 0 and VIASAT_TRIP["anomaly"].iloc[idx_row] != "S"):
-                                        if (progr / lDist < 0.9):
-                                            s = list(VIASAT_TRIP.iloc[idx_row].anomaly)
-                                            s[2] = "c"
-                                            s = "".join(s)
-                                            VIASAT_TRIP["anomaly"].iloc[idx_row] = s
-                                        elif (progr / lDist > 10 and progr > 2200):
-                                            s = list(VIASAT_TRIP.iloc[idx_row].anomaly)
-                                            s[3] = "C"
-                                            s = "".join(s)
-                                            VIASAT_TRIP["anomaly"].iloc[idx_row] = s
-                                    if (timeDiff > 0 and 3.6 * 1000 * progr / timeDiff > 250):
-                                        s = list(VIASAT_TRIP.iloc[idx_row].anomaly)
-                                        s[5] = "V"
-                                        s = "".join(s)
-                                        VIASAT_TRIP["anomaly"].iloc[idx_row] = s
-                                    if (row.panel != 1 and progr > 10000):
-                                        s = list(VIASAT_TRIP.iloc[idx_row].anomaly)
-                                        s[0] = "S"
-                                        s = "".join(s)
-                                        VIASAT_TRIP["anomaly"].iloc[idx_row] = s
-                                        s = list(VIASAT_TRIP.iloc[idx_row].anomaly)
-                                        s[6] = "D"
-                                        s = "".join(s)
-                                        VIASAT_TRIP["anomaly"].iloc[idx_row] = s
-                                        VIASAT_TRIP.at[len(VIASAT_TRIP) - 1, "anomaly"] = s
-                                        s = list(VIASAT_TRIP.iloc[idx_row].anomaly)
-                                        s[0] = "E"
-                                        s = "".join(s)
-                                        VIASAT_TRIP.at[len(VIASAT_TRIP) - 1, "anomaly"] = s
-                                    elif (row.panel != 0 and progr <= 0):
-                                        s = list(VIASAT_TRIP.iloc[idx_row].anomaly)
-                                        s[6] = "d"
-                                        s = "".join(s)
-                                        VIASAT_TRIP["anomaly"].iloc[idx_row] = s
-                                ### add all TRIPS together ##################
-                                # final_TRIPS = final_TRIPS.append(VIASAT_TRIP)
+                          ####### TRAVEL time > 10 min ###############################################
+                                if (row.last_panel ==1 and row.panel ==1 and timeDiff > 10*60):
+                                    s = list(VIASAT_TRIP.iloc[0].anomaly)
+                                    s[0] = "S"
+                                    s[4] = "T"
+                                    s = "".join(s)
+                                    VIASAT_TRIP.at[0, "anomaly"] = s
+                                    s = list(VIASAT_TRIP.iloc[len(VIASAT_TRIP) - 1].anomaly)
+                                    s[0] = "E"
+                                    s[4] = "T"
+                                    s = "".join(s)
+                                    VIASAT_TRIP.at[len(VIASAT_TRIP) - 1, "anomaly"] = s
+                            # final_TRIPS = final_TRIPS.append(VIASAT_TRIP)
 
-                                ### remove columns and add terminal ID
-                                # VIASAT_TRIP['track_ID'] = track_ID
-                                VIASAT_TRIP['idterm'] = track_ID
-                                VIASAT_TRIP['segment'] = VIASAT_TRIP.index
-                                VIASAT_TRIP.drop(['last_panel', 'last_lon', 'last_lat',    # <------
-                                                  'last_totalseconds', 'last_progressive'], axis=1,
-                                                 inplace=True)
+                                if (row.grade <= 15):
+                                    s = list(VIASAT_TRIP.iloc[idx_row].anomaly)
+                                    s[1] = "Q"
+                                    s = "".join(s)
+                                    VIASAT_TRIP["anomaly"].iloc[idx_row] = s
+                                elif (row.grade > 15):
+                                    s = list(VIASAT_TRIP.iloc[idx_row].anomaly)
+                                    s[1] = "q"
+                                    s = "".join(s)
+                                    VIASAT_TRIP["anomaly"].iloc[idx_row] = s
+                                if (lDist > 0 and VIASAT_TRIP["anomaly"].iloc[idx_row] != "S"):
+                                    if (progr / lDist < 0.9):
+                                        s = list(VIASAT_TRIP.iloc[idx_row].anomaly)
+                                        s[2] = "c"
+                                        s = "".join(s)
+                                        VIASAT_TRIP["anomaly"].iloc[idx_row] = s
+                                    elif (progr / lDist > 10 and progr > 2200):
+                                        s = list(VIASAT_TRIP.iloc[idx_row].anomaly)
+                                        s[3] = "C"
+                                        s = "".join(s)
+                                        VIASAT_TRIP["anomaly"].iloc[idx_row] = s
+                                if (timeDiff > 0 and 3.6 * 1000 * progr / timeDiff > 250):
+                                    s = list(VIASAT_TRIP.iloc[idx_row].anomaly)
+                                    s[5] = "V"
+                                    s = "".join(s)
+                                    VIASAT_TRIP["anomaly"].iloc[idx_row] = s
+                                if (row.panel != 1 and progr > 10000):
+                                    s = list(VIASAT_TRIP.iloc[idx_row].anomaly)
+                                    s[0] = "S"
+                                    s = "".join(s)
+                                    VIASAT_TRIP["anomaly"].iloc[idx_row] = s
+                                    s = list(VIASAT_TRIP.iloc[idx_row].anomaly)
+                                    s[6] = "D"
+                                    s = "".join(s)
+                                    VIASAT_TRIP["anomaly"].iloc[idx_row] = s
+                                    VIASAT_TRIP.at[len(VIASAT_TRIP) - 1, "anomaly"] = s
+                                    s = list(VIASAT_TRIP.iloc[idx_row].anomaly)
+                                    s[0] = "E"
+                                    s = "".join(s)
+                                    VIASAT_TRIP.at[len(VIASAT_TRIP) - 1, "anomaly"] = s
+                                elif (row.panel != 0 and progr <= 0):
+                                    s = list(VIASAT_TRIP.iloc[idx_row].anomaly)
+                                    s[6] = "d"
+                                    s = "".join(s)
+                                    VIASAT_TRIP["anomaly"].iloc[idx_row] = s
+                            ### add all TRIPS together ##################
+                            # final_TRIPS = final_TRIPS.append(VIASAT_TRIP)
 
-                                #### Connect to database using a context manager and populate the DB ####
-                                connection = engine.connect()
-                                VIASAT_TRIP.to_sql("routecheck_2019", con=connection, schema="public",
-                                                   if_exists='append')
-                                connection.close()
+                            ### remove columns and add terminal ID
+                            # VIASAT_TRIP['track_ID'] = track_ID
+                            VIASAT_TRIP['idterm'] = track_ID
+                            VIASAT_TRIP['segment'] = VIASAT_TRIP.index
+                            VIASAT_TRIP.drop(['last_panel', 'last_lon', 'last_lat',    # <------
+                                              'last_totalseconds', 'last_progressive'], axis=1,
+                                             inplace=True)
+                            #### Connect to database using a context manager and populate the DB ####
+                            connection = engine.connect()
+                            VIASAT_TRIP.to_sql("routecheck", con=connection, schema="public",
+                                               if_exists='append')
+                            connection.close()
 
 
 ################################################
