@@ -9,6 +9,9 @@ import glob
 import db_connect
 import sqlalchemy as sal
 import multiprocessing as mp
+from sqlalchemy import exc
+import sqlalchemy as sal
+from sqlalchemy.pool import NullPool
 
 os.chdir('D:/ViaSat/VIASAT_RM/obu')
 cwd = os.getcwd()
@@ -21,22 +24,48 @@ os.chdir('D:/ViaSat/VIASAT_RM')
 viasat_filenames = glob.glob('*.{}'.format(extension))
 
 # connect to new DB to be populated with Viasat data
-conn_HAIG = db_connect.connect_HAIG_Viasat_RM_2019()
+conn_HAIG = db_connect.connect_HAIG_ROMA()
 cur_HAIG = conn_HAIG.cursor()
 
+'''
 
+cur_HAIG.execute("""
+    CREATE EXTENSION postgis
+""")
+
+cur_HAIG.execute("""
+CREATE EXTENSION postgis_topology
+""")
+conn_HAIG.commit()
+
+'''
 #########################################################################################
 ### upload OBU data into the DB. Create table with idterm, vehicle type and put into a DB
 
+os.chdir('D:/ViaSat/VIASAT_RM/obu')
 obu(obu_CSV)
 
 ### upload viasat data into the DB  # long time run...
+os.chdir('D:/ViaSat/VIASAT_RM')
 upload_DB(viasat_filenames)
 
 
 ###########################################################
 ### ADD a SEQUENTIAL ID to the dataraw table ##############
 ###########################################################
+
+
+## add geometry WGS84 4286
+cur_HAIG.execute("""
+alter table dataraw add column geom geometry(POINT,4326)
+""")
+
+cur_HAIG.execute("""
+update dataraw set geom = st_setsrid(st_point(longitude,latitude),4326)
+""")
+conn_HAIG.commit()
+
+
 
 # long time run...
 ## create a consecutive ID for each row
@@ -70,11 +99,42 @@ CREATE index dataraw_id_idx on public.dataraw("id");
 """)
 conn_HAIG.commit()
 
+
+cur_HAIG.execute("""
+CREATE index dataraw_lat_idx on public.dataraw(latitude);
+""")
+conn_HAIG.commit()
+
+cur_HAIG.execute("""
+CREATE index dataraw_lon_idx on public.dataraw(longitude);
+""")
+conn_HAIG.commit()
+
+cur_HAIG.execute("""
+CREATE index dataraw_geom_idx on public.dataraw(geom);
+""")
+conn_HAIG.commit()
+
+
 ########################################################################################
 #### create table with 'idterm', 'vehtype' and 'portata' and load into the DB ##########
 
 idterm_vehtype_portata()   # long time run...
 
+## add an index to the 'idterm' column of the "idterm_portata" table
+cur_HAIG.execute("""
+CREATE index idtermportata_idterm_idx on public.idterm_portata(idterm);
+""")
+conn_HAIG.commit()
+
+## add an index to the 'idterm' column of the "obu" table
+cur_HAIG.execute("""
+CREATE index obu_idterm_idx on public.obu(idterm);
+""")
+conn_HAIG.commit()
+
+
+#########################################################################################
 #########################################################################################
 ##### create table routecheck ###########################################################
 
@@ -83,14 +143,13 @@ os.chdir('D:/ENEA_CAS_WORK/ROMA_2019')
 os.getcwd()
 
 # Create an SQL connection engine to the output DB
-engine = sal.create_engine('postgresql://postgres:superuser@10.0.0.1:5432/HAIG_Viasat_RM_2019')
+engine = sal.create_engine('postgresql://postgres:superuser@10.1.0.1:5432/HAIG_ROMA', poolclass=NullPool)
 
 # get all ID terminal of Viasat data
 all_VIASAT_IDterminals = pd.read_sql_query(
     ''' SELECT *
-        FROM public.obu''', conn_HAIG)
+        FROM public.idterm_portata''', conn_HAIG)
 all_VIASAT_IDterminals['idterm'] = all_VIASAT_IDterminals['idterm'].astype('Int64')
-all_VIASAT_IDterminals['anno'] = all_VIASAT_IDterminals['anno'].astype('Int64')
 all_VIASAT_IDterminals['portata'] = all_VIASAT_IDterminals['portata'].astype('Int64')
 
 # make a list of all IDterminals (GPS ID of Viasata data) each ID terminal (track) represent a distinct vehicle
@@ -101,7 +160,7 @@ all_ID_TRACKS = list(all_VIASAT_IDterminals.idterm.unique())
 pool = mp.Pool(processes=10)     ## use 55 processors
 print("++++++++++++++++ POOL +++++++++++++++++", pool)
 ## use the function "func" defined in "routecheck_viasat_ROMA_FK.py" to run multitocessing...
-results = pool.map(func, [(last_track_idx, track_ID) for last_track_idx, track_ID in enumerate(all_ID_TRACKS)])
+# results = pool.map(func, [(last_track_idx, track_ID) for last_track_idx, track_ID in enumerate(all_ID_TRACKS)])
 pool.close()
 pool.join()
 
@@ -113,60 +172,195 @@ pool.terminate()
 
 ## add indices ######
 
+### change type of "idterm" from text to bigint
 cur_HAIG.execute("""
-CREATE index routecheck_2019_id_idx on public.routecheck_2019("id");
+ALTER TABLE public.routecheck ALTER COLUMN "idterm" TYPE bigint USING "idterm"::bigint
+""")
+conn_HAIG.commit()
+
+cur_HAIG.execute("""
+CREATE index routecheck_id_idx on public.routecheck("id");
 """)
 conn_HAIG.commit()
 
 
 cur_HAIG.execute("""
-CREATE index routecheck_2019_idterm_idx on public.routecheck_2019("idterm");
-""")
-conn_HAIG.commit()
-
-
-
-cur_HAIG.execute("""
-CREATE index routecheck_2019_TRIP_ID_idx on public.routecheck_2019("TRIP_ID");
-""")
-conn_HAIG.commit()
-
-
-
-cur_HAIG.execute("""
-CREATE index routecheck_2019_timedate_idx on public.routecheck_2019("timedate");
-""")
-conn_HAIG.commit()
-
-
-cur_HAIG.execute("""
-CREATE index routecheck_2019_grade_idx on public.routecheck_2019("grade");
+CREATE index routecheck_idterm_idx on public.routecheck("idterm");
 """)
 conn_HAIG.commit()
 
 
 
 cur_HAIG.execute("""
-CREATE index routecheck_2019_anomaly_idx on public.routecheck_2019("anomaly");
+CREATE index routecheck_TRIP_ID_idx on public.routecheck("TRIP_ID");
 """)
 conn_HAIG.commit()
 
 
 cur_HAIG.execute("""
-CREATE index routecheck_2019_speed_idx on public.routecheck_2019("speed");
+CREATE index routecheck_idtrajectory_ID_idx on public.routecheck("idtrajectory");
+""")
+conn_HAIG.commit()
+
+
+
+
+cur_HAIG.execute("""
+CREATE index routecheck_timedate_idx on public.routecheck("timedate");
+""")
+conn_HAIG.commit()
+
+
+cur_HAIG.execute("""
+CREATE index routecheck_grade_idx on public.routecheck("grade");
 """)
 conn_HAIG.commit()
 
 
 
 cur_HAIG.execute("""
-CREATE index routecheck_2019_lat_idx on public.routecheck_2019(latitude);
+CREATE index routecheck_anomaly_idx on public.routecheck("anomaly");
 """)
 conn_HAIG.commit()
 
 
 cur_HAIG.execute("""
-CREATE index routecheck_2019_lon_idx on public.routecheck_2019(longitude);
+CREATE index routecheck_speed_idx on public.routecheck("speed");
 """)
 conn_HAIG.commit()
+
+
+cur_HAIG.execute("""
+CREATE index routecheck_lat_idx on public.routecheck(latitude);
+""")
+conn_HAIG.commit()
+
+
+cur_HAIG.execute("""
+CREATE index routecheck_lon_idx on public.routecheck(longitude);
+""")
+conn_HAIG.commit()
+
+
+####################################################################################
+####################################################################################
+##### create table route ###########################################################
+
+
+## multiprocess.....
+os.chdir('D:/ENEA_CAS_WORK/ROMA_2019')
+os.getcwd()
+
+# Create an SQL connection engine to the output DB
+engine = sal.create_engine('postgresql://postgres:superuser@10.1.0.1:5432/HAIG_ROMA, poolclass=NullPool')
+
+
+#### setup multiprocessing.......
+
+### change type of "idterm" from text to bigint
+cur_HAIG.execute("""
+ALTER TABLE public.route ALTER COLUMN "idterm" TYPE bigint USING "idterm"::bigint
+""")
+conn_HAIG.commit()
+
+
+### create index for 'idterm'
+cur_HAIG.execute("""
+CREATE index route_idterm_idx on public.route(idterm);
+""")
+conn_HAIG.commit()
+
+
+##### convert "geometry" field on LINESTRING
+
+## Convert the `'geom'` column back to Geometry datatype, from text
+with engine.connect() as conn, conn.begin():
+    print(conn)
+    sql = """ALTER TABLE public."route"
+                                  ALTER COLUMN geom TYPE Geometry(LINESTRING, 4326)
+                                    USING ST_SetSRID(geom::Geometry, 4326)"""
+    conn.execute(sql)
+
+
+
+
+
+####################################################################################
+####################################################################################
+##### create table mapmatching #####################################################
+
+## multiprocess.....
+os.chdir('D:/ENEA_CAS_WORK/ROMA_2019')
+os.getcwd()
+
+# Create an SQL connection engine to the output DB
+engine = sal.create_engine('postgresql://postgres:superuser@10.0.0.1:5432/HAIG_Viasat_RM_2019')
+
+
+#### setup multiprocessing.......
+## make indices
+
+cur_HAIG.execute("""
+ALTER TABLE public.mapmatching ALTER COLUMN "idterm" TYPE bigint USING "idterm"::bigint
+""")
+conn_HAIG.commit()
+
+
+cur_HAIG.execute("""
+CREATE index mapmatching_idterm_idx on public.mapmatching("idterm");
+""")
+conn_HAIG.commit()
+
+
+## create index on the column (u,v) togethers in the table 'mapmatching_2017' ###
+cur_HAIG.execute("""
+CREATE INDEX UV_idx_match ON public.mapmatching(u,v);
+""")
+conn_HAIG.commit()
+
+
+## create index on the "TRIP_ID" column
+cur_HAIG.execute("""
+CREATE index match_trip_id_idx on public.mapmatching("TRIP_ID");
+""")
+conn_HAIG.commit()
+
+
+## create index on the "idtrace" column
+cur_HAIG.execute("""
+CREATE index match_idtrace_idx on public.mapmatching("idtrace");
+""")
+conn_HAIG.commit()
+
+
+cur_HAIG.execute("""
+CREATE index match_timedate_idx on public.mapmatching(timedate);
+""")
+conn_HAIG.commit()
+
+
+
+#######################################################################################
+#######################################################################################
+
+##### "OSM_edges": convert "geometry" field as LINESTRING
+
+with engine.connect() as conn, conn.begin():
+    print(conn)
+    sql = """ALTER TABLE public."OSM_edges"
+                                  ALTER COLUMN geom TYPE Geometry(LINESTRING, 4326)
+                                    USING ST_SetSRID(geom::Geometry, 4326)"""
+    conn.execute(sql)
+
+
+##### "OSM_nodes": convert "geometry" field as POINTS
+
+with engine.connect() as conn, conn.begin():
+    print(conn)
+    sql = """ALTER TABLE public."OSM_nodes"
+                                  ALTER COLUMN geom TYPE Geometry(POINT, 4326)
+                                    USING ST_SetSRID(geom::Geometry, 4326)"""
+    conn.execute(sql)
+
+
 

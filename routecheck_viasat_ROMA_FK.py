@@ -24,6 +24,8 @@ from datetime import datetime
 from geoalchemy2 import Geometry, WKTElement
 from sqlalchemy import *
 import sqlalchemy as sal
+from sqlalchemy import exc
+from sqlalchemy.pool import NullPool
 import geopy.distance
 
 import multiprocessing as mp
@@ -50,12 +52,13 @@ today = today.strftime("%b-%d-%Y")
 ########################################################################################
 
 # connect to new DB to be populated with Viasat data after route-check
-conn_HAIG = db_connect.connect_HAIG_Viasat_RM_2019()
+conn_HAIG = db_connect.connect_HAIG_ROMA()
 cur_HAIG = conn_HAIG.cursor()
 
 
 # Create an SQL connection engine to the output DB
-engine = sal.create_engine('postgresql://postgres:superuser@10.0.0.1:5432/HAIG_Viasat_RM_2019')
+engine = sal.create_engine('postgresql://postgres:superuser@10.1.0.1:5432/HAIG_ROMA', poolclass=NullPool)
+
 
 ## create extension postgis on the database HAIG_Viasat_RM_2019  (only one time)
 # erase existing table
@@ -63,6 +66,7 @@ engine = sal.create_engine('postgresql://postgres:superuser@10.0.0.1:5432/HAIG_V
 # conn_HAIG.commit()
 
 
+"""
 # get all ID terminal of Viasat data
 all_VIASAT_IDterminals = pd.read_sql_query(
     ''' SELECT *
@@ -72,6 +76,18 @@ all_VIASAT_IDterminals['portata'] = all_VIASAT_IDterminals['portata'].astype('In
 
 # make a list of all IDterminals (GPS ID of Viasata data) each ID terminal (track) represent a distinct vehicle
 all_ID_TRACKS = list(all_VIASAT_IDterminals.idterm.unique())
+with open("D:/ENEA_CAS_WORK/ROMA_2019/all_idterms.txt", "w") as file:
+    file.write(str(all_ID_TRACKS))
+
+"""
+
+# with open("D:/ENEA_CAS_WORK/ROMA_2019/all_idterms.txt", "r") as file:
+#     all_ID_TRACKS = eval(file.readline())
+
+## reload 'all_ID_TRACKS' as list
+with open("D:/ENEA_CAS_WORK/ROMA_2019/all_idterms_new.txt", "r") as file:
+     all_ID_TRACKS = eval(file.readline())
+
 
 # track_ID = '2704220'   ### fleet
 # track_ID = '4457330'   ### car
@@ -392,10 +408,19 @@ def func(arg):
                                               'last_totalseconds', 'last_progressive'], axis=1,
                                              inplace=True)
                             #### Connect to database using a context manager and populate the DB ####
-                            connection = engine.connect()
-                            VIASAT_TRIP.to_sql("routecheck", con=connection, schema="public",
-                                               if_exists='append')
-                            connection.close()
+                            try:
+                                connection = engine.connect()
+                                VIASAT_TRIP.to_sql("routecheck", con=connection, schema="public",
+                                                   if_exists='append')
+                                connection.close()
+                            except exc.OperationalError:
+                                print('OperationalError')
+
+                                connection = engine.connect()
+                                VIASAT_TRIP.to_sql("routecheck", con=connection, schema="public",
+                                                   if_exists='append')
+                                connection.close()
+
 
 
 ################################################

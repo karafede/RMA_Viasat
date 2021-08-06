@@ -80,6 +80,7 @@ cur_HAIG = conn_HAIG.cursor()
 
 # erase existing table
 # cur_HAIG.execute("DROP TABLE IF EXISTS mapmatching_all CASCADE")
+# cur_HAIG.execute("DROP TABLE IF EXISTS accuracy CASCADE")
 # conn_HAIG.commit()
 
 # Function to generate WKB hex
@@ -93,7 +94,7 @@ def wkb_hexer(line):
 engine = sal.create_engine('postgresql://postgres:superuser@10.0.0.1:5432/HAIG_Viasat_RM_2019')
 
 
-# ## import OSM network into the DB 'HAIG_Viasat_RM_2019'
+## import OSM network into the DB 'HAIG_Viasat_RM_2019'
 # ###  to a DB and populate the DB  ###
 # connection = engine.connect()
 # gdf_edges_ALL['geom'] = gdf_edges_ALL['geometry'].apply(wkb_hexer)
@@ -106,7 +107,7 @@ engine = sal.create_engine('postgresql://postgres:superuser@10.0.0.1:5432/HAIG_V
 # gdf_nodes_ALL.to_sql("nodes", con=connection, schema="net",
 #                    if_exists='append')
 #
-# ##### "edges": convert "geometry" field ad LINESTRING
+# ##### "edges": convert "geometry" field as LINESTRING
 # with engine.connect() as conn, conn.begin():
 #     print(conn)
 #     sql = """ALTER TABLE net.edges
@@ -115,7 +116,7 @@ engine = sal.create_engine('postgresql://postgres:superuser@10.0.0.1:5432/HAIG_V
 #     conn.execute(sql)
 #
 #
-# ##### "nodes": convert "geometry" field ad LINESTRING
+# ##### "nodes": convert "geometry" field as POINTS
 # with engine.connect() as conn, conn.begin():
 #     print(conn)
 #     sql = """ALTER TABLE net.nodes
@@ -136,9 +137,6 @@ engine = sal.create_engine('postgresql://postgres:superuser@10.0.0.1:5432/HAIG_V
 # cur_HAIG.close()
 
 
-os.chdir('D:/ENEA_CAS_WORK/ROMA_2019')
-os.getcwd()
-
 # ## get all ID terminal of Viasat data  (from routecheck)
 # all_VIASAT_IDterminals = pd.read_sql_query(
 #     ''' SELECT "idterm"
@@ -152,20 +150,22 @@ os.getcwd()
 
 
 ## reload 'all_ID_TRACKS' as list
-with open("D:/ENEA_CAS_WORK/ROMA_2019/all_ID_TRACKS_2019.txt", "r") as file:
+# with open("D:/ENEA_CAS_WORK/ROMA_2019/all_ID_TRACKS_2019.txt", "r") as file:
+#     all_ID_TRACKS = eval(file.readline())
+with open("D:/ENEA_CAS_WORK/ROMA_2019/all_ID_TRACKS_2019_new.txt", "r") as file:
     all_ID_TRACKS = eval(file.readline())
-# with open("D:/ENEA_CAS_WORK/ROMA_2019/all_ID_TRACKS_2019_new.txt", "r") as file:
+# with open("D:/ENEA_CAS_WORK/ROMA_2019/all_ID_TRACKS_09_October_2019_new.txt", "r") as file:
 #     all_ID_TRACKS = eval(file.readline())
 
 
-### get all terminals corresponding to 'fleet' (from routecheck)
+# ## get all terminals corresponding to 'fleet' (from routecheck_2019)
 # viasat_fleet = pd.read_sql_query('''
-#              SELECT idterm, vehtype
-#              FROM public.routecheck
-#              WHERE vehtype = '2' ''', conn_HAIG)
-## make an unique list
+#               SELECT idterm, vehtype
+#               FROM public.routecheck
+#               WHERE vehtype = '2' ''', conn_HAIG)
+# # make an unique list
 # idterms_fleet = list(viasat_fleet.idterm.unique())
-# ## save 'all_ID_TRACKS' as list
+# # save 'all_ID_TRACKS' as list
 # with open("idterms_fleet.txt", "w") as file:
 #     file.write(str(idterms_fleet))
 
@@ -175,29 +175,31 @@ with open("D:/ENEA_CAS_WORK/ROMA_2019/idterms_fleet.txt", "r") as file:
     idterms_fleet = eval(file.readline())
 
 
-# track_ID = '3273302'
-# track_ID = '2400053'       # type 2 (2019)
-# track_ID = '2745653'       # type 2 (2017)
-# all_ID_TRACKS = ['3273302']
+# track_ID = '4378843'
+# 5922087
 
-####################################################################################
-# create basemap
-# ave_LAT = 37.53988692816245
-# ave_LON = 15.044971594798902
+# ####################################################################################
+# ### create basemap (Roma)
+# import folium
+#
+# ave_LAT = 41.888009265234906
+# ave_LON = 12.500281904062206
+#
 # my_map = folium.Map([ave_LAT, ave_LON], zoom_start=11, tiles='cartodbpositron')
-####################################################################################
-
+# ####################################################################################
 
 
 ## read each TRIP from each idterm (TRACK_ID or idtrajectory)
 
+## ONLY select data from Wednesday 9 October 2019
+
 def func(arg):
     last_track_idx, track_ID = arg
-
     track_ID = str(track_ID)
     print("idterm:", track_ID)
     viasat_data = pd.read_sql_query('''
                 SELECT * FROM public.routecheck 
+                 /*WHERE date(routecheck.timedate) = '2019-10-09' AND */    
                 WHERE "idterm" = '%s' ''' % track_ID, conn_HAIG)
     ### FILTERING #############################################
     # viasat_data = viasat_data[viasat_data.anomaly != "IQc345d"]
@@ -870,15 +872,17 @@ def func(arg):
                         # edges_matched_route_GV['id'] = edges_matched_route_GV['id'].bfill()
                         edges_matched_route_GV['id'] = edges_matched_route_GV['id'].ffill()
                         edges_matched_route_GV['id'] = edges_matched_route_GV['id'].bfill()
-                        # edges_matched_route_GV['id'].fillna(-1)
-                        # try:
-                        edges_matched_route_GV['id'] = edges_matched_route_GV.id.astype('int')
-                        # except ValueError:
-                        #     pass
+                        try:
+                            edges_matched_route_GV['id'] = edges_matched_route_GV.id.astype('int')
+                        except ValueError:
+                             pass
 
                         edges_matched_route_GV['idtrajectory'] = edges_matched_route_GV['idtrajectory'].ffill()
                         edges_matched_route_GV['idtrajectory'] = edges_matched_route_GV['idtrajectory'].bfill()
-                        edges_matched_route_GV['idtrajectory'] = edges_matched_route_GV.idtrajectory.astype('int')
+                        try:
+                            edges_matched_route_GV['idtrajectory'] = edges_matched_route_GV.idtrajectory.astype('int')
+                        except ValueError:
+                            pass
 
                         edges_matched_route_GV['totalseconds'] = edges_matched_route_GV['totalseconds'].ffill()
                         edges_matched_route_GV['totalseconds'] = edges_matched_route_GV['totalseconds'].bfill()
@@ -928,8 +932,8 @@ def func(arg):
                         edges_matched_route_GV['mean_speed'] = edges_matched_route_GV.mean_speed.astype('int')
                         edges_matched_route_GV['TRIP_ID'] = edges_matched_route_GV['TRIP_ID'].ffill()
                         edges_matched_route_GV['TRIP_ID'] = edges_matched_route_GV['TRIP_ID'].bfill()
-                        # edges_matched_route_GV['track_ID'] = edges_matched_route_GV['track_ID'].ffill()
-                        # edges_matched_route_GV['track_ID'] = edges_matched_route_GV['track_ID'].bfill()
+                        edges_matched_route_GV['idterm'] = edges_matched_route_GV['idterm'].ffill()
+                        edges_matched_route_GV['idterm'] = edges_matched_route_GV['idterm'].bfill()
                         ## remove rows with negative "mean_speed"...for now....
                         edges_matched_route_GV = edges_matched_route_GV[edges_matched_route_GV['mean_speed'] > 0]
                         edges_matched_route_GV = edges_matched_route_GV[edges_matched_route_GV['mean_speed'] < 190]
@@ -938,15 +942,8 @@ def func(arg):
                         if len(edges_matched_route_GV) > 0:
                             ## populate a DB
                             try:
-                                # final_map_matching_table_GV = edges_matched_route_GV[['idtrajectory', 'geometry',
-                                #                                                       'u', 'v',
-                                #                                                       'idtrace', 'sequenza', 'mean_speed',
-                                #                                                       'timedate', 'totalseconds',
-                                #                                                       'TRIP_ID',
-                                #                                                       'length', 'highway', 'name', 'ref']]
-
                                 final_map_matching_table_GV = edges_matched_route_GV[['idtrajectory',
-                                                                                      'u', 'v',
+                                                                                      'u', 'v', 'idterm',
                                                                                       'idtrace', 'sequenza',
                                                                                       'mean_speed',
                                                                                       'timedate',
@@ -959,8 +956,8 @@ def func(arg):
                                 ## final_map_matching_table_GV['geom'] = final_map_matching_table_GV['geometry'].apply(wkb_hexer)
                                 ## final_map_matching_table_GV.drop('geometry', 1, inplace=True)
 
-                                # final_map_matching_table_GV.to_sql("mapmatching_2019", con=connection, schema="public",
-                                #                  if_exists='append')
+                                final_map_matching_table_GV.to_sql("mapmatching_all", con=connection, schema="public",
+                                                 if_exists='append')
 
                                 #################################################################
                                 #################################################################
@@ -968,12 +965,13 @@ def func(arg):
                                 sum_distance_mapmatching = sum(final_map_matching_table_GV.length)
                                 ## calculate the accuracy of the matched route compared to the sum of the differences of the progressives (from Viasat data)
                                 ###  ACCURACY: ([length of the matched trajectory] / [length of the travelled distance (sum  delta progressives)])*100
-                                accuracy = int(int((sum_distance_mapmatching / sum_progressive) * 100))
-                                df_accuracy = pd.DataFrame({'accuracy': [accuracy], 'TRIP_ID': [trip]})
-
-                                # df_accuracy.to_sql("accuracy_2019", con=connection, schema="public",
-                                #                  if_exists='append')
-
+                                try:
+                                    accuracy = int(int((sum_distance_mapmatching / sum_progressive) * 100))
+                                    df_accuracy = pd.DataFrame({'accuracy': [accuracy], 'TRIP_ID': [trip]})
+                                    df_accuracy.to_sql("accuracy", con=connection, schema="public",
+                                                     if_exists='append')
+                                except ZeroDivisionError:
+                                    pass
                                 connection.close()
 
                             except KeyError:
@@ -989,7 +987,7 @@ def func(arg):
 
 if __name__ == '__main__':
     # pool = mp.Pool(processes=mp.cpu_count()) ## use all available processors
-    pool = mp.Pool(processes=55)     ## use 60 processors
+    pool = mp.Pool(processes=45)     ## use 60 processors
     print("++++++++++++++++ POOL +++++++++++++++++", pool)
     results = pool.map(func, [(last_track_idx, track_ID) for last_track_idx, track_ID in enumerate(all_ID_TRACKS)])
     pool.close()

@@ -48,9 +48,16 @@ def connect_HAIG_Viasat_CT():
 
 def connect_HAIG_Viasat_SA():
     ##Connect to an existing database
-     conn = psycopg2.connect(user="postgres", password="superuser", host="192.168.132.18",
+     conn = psycopg2.connect(user="postgres", password="superuser", host="10.0.0.1",
                              port="5432", database="HAIG_Viasat_SA")
      return(conn)
+
+### PostgreSQL on OFFICE PC ##########################################################
+def connect_fede_viasat():
+    # Connect to an existing database
+    conn = psycopg2.connect(user="postgres", password="vaxcrio1", host="192.168.134.43",
+                            port="5432", database="fede_viasat", sslmode="disable", gssencmode="disable")
+    return (conn)
 
 
 def connect_HAIG_Viasat_BS():
@@ -59,6 +66,7 @@ def connect_HAIG_Viasat_BS():
                             port="5432", database="HAIG_Viasat_BS")
     return (conn)
 
+
 def connect_HAIG_Viasat_RM_2019():
     #Connect to an existing database
     conn = psycopg2.connect(user="postgres", password="superuser", host="10.0.0.1",
@@ -66,9 +74,31 @@ def connect_HAIG_Viasat_RM_2019():
     return (conn)
 
 
-### PostgreSQL on OFFICE PC ##########################################################
-def connect_fede_viasat():
+
+
+### PostgreSQL on NEW SERVER CASACCIA-CAPANNE F84 ############################################
+def connect_HAIG_SALERNO():
     # Connect to an existing database
-    conn = psycopg2.connect(user="postgres", password="vaxcrio1", host="192.168.134.43",
-                            port="5432", database="fede_viasat", sslmode="disable", gssencmode="disable")
+    conn = psycopg2.connect(user="postgres", password="superuser", host="10.1.0.1",
+                            port="5432", database="HAIG_SALERNO", sslmode="disable", gssencmode="disable")
+    return (conn)
+
+
+def connect_HAIG_CATANIA():
+    # Connect to an existing database
+    conn = psycopg2.connect(user="postgres", password="superuser", host="10.1.0.1",
+                            port="5432", database="HAIG_CATANIA", sslmode="disable", gssencmode="disable")
+    return (conn)
+
+
+def connect_HAIG_BRESCIA():
+    # Connect to an existing database
+    conn = psycopg2.connect(user="postgres", password="superuser", host="10.1.0.1",
+                            port="5432", database="HAIG_BRESCIA", sslmode="disable", gssencmode="disable")
+    return (conn)
+
+def connect_HAIG_ROMA():
+    # Connect to an existing database
+    conn = psycopg2.connect(user="postgres", password="superuser", host="10.1.0.1",
+                            port="5432", database="HAIG_ROMA", sslmode="disable", gssencmode="disable")
     return (conn)

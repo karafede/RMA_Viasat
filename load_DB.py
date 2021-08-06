@@ -18,25 +18,28 @@ os.chdir('D:/ViaSat/VIASAT_RM')
 cwd = os.getcwd()
 
 # connect to new DB to be populated with Viasat data after route-check
-conn_HAIG = db_connect.connect_HAIG_Viasat_RM_2019()
+conn_HAIG = db_connect.connect_HAIG_ROMA()
 cur_HAIG = conn_HAIG.cursor()
 
 
-## create extension postgis on the database HAIG_Viasat_RM_2019  (only one time)
+## create extension postgis on the database HAIG_ROMA  (only one time)
 
-# cur_HAIG.execute("""
-# CREATE EXTENSION postgis
-# """)
 
-# cur_HAIG.execute("""
-#  CREATE EXTENSION postgis_topology
-# """)
+'''
 
-# conn_HAIG.commit()
+cur_HAIG.execute("""
+    CREATE EXTENSION postgis
+""")
 
+cur_HAIG.execute("""
+CREATE EXTENSION postgis_topology
+""")
+conn_HAIG.commit()
+
+'''
 
 # Create an SQL connection engine to the output DB
-engine = sal.create_engine('postgresql://postgres:superuser@10.0.0.1:5432/HAIG_Viasat_RM_2019')
+engine = sal.create_engine('postgresql://postgres:superuser@10.1.0.1:5432/HAIG_ROMA')
 connection = engine.connect()
 
 # erase existing table

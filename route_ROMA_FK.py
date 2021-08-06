@@ -31,6 +31,9 @@ from datetime import datetime
 from geoalchemy2 import Geometry, WKTElement
 from sqlalchemy import *
 import sqlalchemy as sal
+from sqlalchemy import exc
+import sqlalchemy as sal
+from sqlalchemy.pool import NullPool
 import geopy.distance
 import momepy
 from shapely import wkb
@@ -57,11 +60,11 @@ from multiprocessing import Pool,RLock
 
 
 # connect to new DB
-conn_HAIG = db_connect.connect_HAIG_Viasat_RM_2019()
+conn_HAIG = db_connect.connect_HAIG_ROMA()
 cur_HAIG = conn_HAIG.cursor()
 
 # Create an SQL connection engine to the output DB
-engine = sal.create_engine('postgresql://postgres:superuser@10.0.0.1:5432/HAIG_Viasat_RM_2019')
+engine = sal.create_engine('postgresql://postgres:superuser@10.1.0.1:5432/HAIG_ROMA', poolclass=NullPool)
 
 ### erase existing table...if exists....
 # cur_HAIG.execute("DROP TABLE IF EXISTS route CASCADE")
@@ -116,9 +119,12 @@ with open("idterms_2019.txt", "w") as file:
 """
 
 # ## reload all 'idterms' as list
-with open("D:/ENEA_CAS_WORK/ROMA_2019/idterms_2019.txt", "r") as file:
-   idterms = eval(file.readline())
+# with open("D:/ENEA_CAS_WORK/ROMA_2019/idterms_2019.txt", "r") as file:
+#   idterms = eval(file.readline())
 
+
+with open("D:/ENEA_CAS_WORK/ROMA_2019/idterms_2019_new.txt", "r") as file:
+   idterms = eval(file.readline())
 
 # idterm = '4251075'
 # idterm = '2750102'
@@ -234,10 +240,17 @@ def func(arg):
                         df_ROUTE['geom'] = geom.iloc[0]
                         df_ROUTE['deviation_pos_m'] = deviation_pos
                         # route_ROMA = route_ROMA.append(df_ROUTE)
-                        connection = engine.connect()
-                        df_ROUTE.to_sql("route", con=connection, schema="public",
-                                           if_exists='append')
-                        connection.close()
+                        try:
+                            connection = engine.connect()
+                            df_ROUTE.to_sql("route", con=connection, schema="public",
+                                               if_exists='append')
+                            connection.close()
+                        except exc.OperationalError:
+                            print('OperationalError')
+                            connection = engine.connect()
+                            df_ROUTE.to_sql("route", con=connection, schema="public",
+                                            if_exists='append')
+                            connection.close()
 
 
 ################################################
