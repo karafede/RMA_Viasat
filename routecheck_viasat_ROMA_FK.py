@@ -184,7 +184,7 @@ def func(arg):
             ## define a list with the starting indices of each new TRIP
             for i in range(len(diff_time)):
                 if viasat_data.vehtype.iloc[0] == 1:
-                    if (diff_time.iloc[i] >= 180
+                    if (diff_time.iloc[i] >= 180   ## 180 seconds (interva between two trips)
                             and (viasat_data.panel.iloc[i - 1] == 0 or
                                  viasat_data.panel.iloc[i] == 0)):
                         row.append(i)

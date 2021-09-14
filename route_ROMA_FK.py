@@ -119,23 +119,17 @@ with open("idterms_2019.txt", "w") as file:
 """
 
 # ## reload all 'idterms' as list
-# with open("D:/ENEA_CAS_WORK/ROMA_2019/idterms_2019.txt", "r") as file:
-#   idterms = eval(file.readline())
-
-
-with open("D:/ENEA_CAS_WORK/ROMA_2019/idterms_2019_new.txt", "r") as file:
+with open("D:/ENEA_CAS_WORK/ROMA_2019/idterms_2019.txt", "r") as file:
    idterms = eval(file.readline())
 
-# idterm = '4251075'
-# idterm = '2750102'
-# idterm = '4316772'
-# idterm = '4422830'
-# idterm = '2704220'
 
+# with open("D:/ENEA_CAS_WORK/ROMA_2019/idterms_2019_new.txt", "r") as file:
+#   idterms = eval(file.readline())
 
-# idtrajectory = 123295034
-# idtrajectory = 103173313
-# idtrajectory = 103161585
+# idterm = '4143872'
+
+# idtrajectory = 82268256
+
 
 
 def func(arg):
@@ -161,9 +155,8 @@ def func(arg):
         ### initialize an empty dataframe
         # route_ROMA = pd.DataFrame([])
         for idx, idtrajectory in enumerate(all_trips):
-            # idtrajectory = 103161585
-            # idtrajectory = 29211960
-            # idtrajectory = 53382528
+            # idtrajectory = 82268256
+
             # print(idtrajectory)
             ## filter data by idterm and by idtrajectory (trip)
             data = viasat_data[viasat_data.idtrajectory == idtrajectory]
@@ -175,8 +168,8 @@ def func(arg):
             ### zip the coordinates into a point object and convert to a GeoData Frame ####
             if len(data) > 1:
                 ## find outliers
-                q = data["progressive"].quantile(0.99)
-                data = data[data["progressive"] < q]
+                # q = data["progressive"].quantile(0.99)
+                # data = data[data["progressive"] <= q]
                 if len(data) > 1:
                     geometry = [Point(xy) for xy in zip(data.longitude, data.latitude)]
                     df = GeoDataFrame(data, geometry=geometry)
@@ -222,7 +215,7 @@ def func(arg):
                     ### find distance between coordinates of two consecutive TRIPS in METERS!!!
                     deviation_pos = great_circle_track_node(lon_end, lat_end, lon_start, lat_start)
                     ### build the final dataframe ("route" table)
-                    if tripdistance_m > 0:
+                    if tripdistance_m > 0 and triptime_s <= 25200 and breaktime_s > 60 and triptime_s >0:    ## <------
                         df_ROUTE = pd.DataFrame({'idtrajectory': [idtrajectory],
                                                  'idterm': [idterm],
                                                  'idtrace_o': [idtrace_o],

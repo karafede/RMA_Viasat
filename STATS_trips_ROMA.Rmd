@@ -54,8 +54,8 @@ setwd("D:/ENEA_CAS_WORK/Catania_RAFAEL/viasat_data")
 drv <- dbDriver("PostgreSQL")
 
 
-conn_HAIG <- dbConnect(drv, dbname = "HAIG_Viasat_RM_2019",
-                       host = "10.0.0.1", port = 5432,       
+conn_HAIG <- dbConnect(drv, dbname = "HAIG_ROMA",
+                       host = "10.1.0.1", port = 5432,       
                        user = "postgres", password = "superuser")
 
 ## list all TABLES
@@ -319,47 +319,44 @@ p
 ```{r, message = FALSE, echo = FALSE, warning = FALSE, fig.width=9,fig.height=5,  fig.cap = "**Figura 3.** Instant Speed"}
 
 
-routecheck = dbGetQuery(conn_HAIG, "SELECT routecheck.speed,
-                                      routecheck.vehtype
-                               FROM routecheck
-                                      ")
-
-# routecheck_lat_lon = dbGetQuery(conn_HAIG, "SELECT routecheck.latitude,
-#                                       routecheck.longitude
+# routecheck = dbGetQuery(conn_HAIG, "SELECT routecheck.speed,
+#                                       routecheck.vehtype
 #                                FROM routecheck
 #                                       ")
-
-routecheck <- routecheck %>%
-  filter(speed > 5)
-
-## distribution of INSTANT SPEEDS ###
-### plot a distribution
-p <- ggplot(routecheck, aes(x = speed)) +
-  theme_bw() +
-  geom_density(stat = 'bin') +
-  scale_x_continuous(trans='log10') +
-  theme(legend.title=element_blank()) + 
-  aes(y=stat(count)/sum(stat(count))) + 
-  scale_y_continuous(labels = scales::percent) +
-  theme_bw() +
-  theme( strip.text = element_text(size = 20)) +
-  guides(fill=FALSE) +
-  theme(axis.text.x=element_text(angle=0,hjust=0.5,vjust=1, size=15)) +
-  theme(axis.text.x=element_text(size=15, colour = "black")) +
-  theme(axis.title.x = element_text(face="bold", colour="black", size=15)) +
-  xlab("velocità (km/h)") +
-  ylab("frequency (%)") +
-  # xlim(0,100)+
-  # geom_vline(xintercept = 25, col="blue", lty=2, size=0.5) +
-  geom_vline(xintercept = 30, col="blue", lty=2, size=0.5) +
-  geom_vline(xintercept = 50, col="red", lty=2, size=0.5) +
-  # geom_vline(xintercept = 10, col="blue", lty=2, size=1) +
-  # geom_text(aes(x = 12 , y = 0.15 , label = "10 m"), size = 4) +
-  theme(axis.title.y = element_text(face="bold", colour="black", size=15),
-        axis.text.y  = element_text(angle=0, vjust=0.5, size=15, colour="black")) +
-  ggtitle("distribuzione delle velocità istantanee") +
-  theme(plot.title = element_text(lineheight=.8, face="bold", size = 15))
-p
+# 
+# 
+# 
+# routecheck <- routecheck %>%
+#   filter(speed > 5)
+# 
+# ## distribution of INSTANT SPEEDS ###
+# ### plot a distribution
+# p <- ggplot(routecheck, aes(x = speed)) +
+#   theme_bw() +
+#   geom_density(stat = 'bin') +
+#   scale_x_continuous(trans='log10') +
+#   theme(legend.title=element_blank()) + 
+#   aes(y=stat(count)/sum(stat(count))) + 
+#   scale_y_continuous(labels = scales::percent) +
+#   theme_bw() +
+#   theme( strip.text = element_text(size = 20)) +
+#   guides(fill=FALSE) +
+#   theme(axis.text.x=element_text(angle=0,hjust=0.5,vjust=1, size=15)) +
+#   theme(axis.text.x=element_text(size=15, colour = "black")) +
+#   theme(axis.title.x = element_text(face="bold", colour="black", size=15)) +
+#   xlab("velocità (km/h)") +
+#   ylab("frequency (%)") +
+#   # xlim(0,100)+
+#   # geom_vline(xintercept = 25, col="blue", lty=2, size=0.5) +
+#   geom_vline(xintercept = 30, col="blue", lty=2, size=0.5) +
+#   geom_vline(xintercept = 50, col="red", lty=2, size=0.5) +
+#   # geom_vline(xintercept = 10, col="blue", lty=2, size=1) +
+#   # geom_text(aes(x = 12 , y = 0.15 , label = "10 m"), size = 4) +
+#   theme(axis.title.y = element_text(face="bold", colour="black", size=15),
+#         axis.text.y  = element_text(angle=0, vjust=0.5, size=15, colour="black")) +
+#   ggtitle("distribuzione delle velocità istantanee") +
+#   theme(plot.title = element_text(lineheight=.8, face="bold", size = 15))
+# p
 
 
 
@@ -418,7 +415,7 @@ route_festivi <- route_festivi %>%
   summarise(count = length(dow))
 
 
-p
+# p
 
 ```
 
