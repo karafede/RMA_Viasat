@@ -1,4 +1,5 @@
 
+
 import os
 import glob
 import pandas as pd
@@ -10,7 +11,7 @@ os.chdir('D:/ENEA_CAS_WORK/ROMA_2019')
 cwd = os.getcwd()
 
 # connect to new DB to be populated with Viasat data after route-check
-conn_HAIG = db_connect.connect_HAIG_Viasat_RM_2019()
+conn_HAIG = db_connect.connect_HAIG_ROMA()
 cur_HAIG = conn_HAIG.cursor()
 
 
@@ -22,8 +23,8 @@ cur_HAIG = conn_HAIG.cursor()
 
 # get all ID terminal of Viasat data
 all_VIASAT_TRIP_IDs = pd.read_sql_query(
-    ''' SELECT "TRIP_ID" 
-        FROM public.mapmatching_all ''', conn_HAIG)
+    ''' SELECT DISTINCT "TRIP_ID" 
+        FROM public.mapmatching ''', conn_HAIG)
 
 
 ###################################################################
@@ -76,6 +77,10 @@ with open("D:/ENEA_CAS_WORK/ROMA_2019/all_ID_TRACKS_2019_new.txt", "w") as file:
 #     file.write(str(all_ID_TRACKS_DIFF))
 
 
+
+##############################################################################################
+##############################################################################################
+##############################################################################################
 ##############################################################################################
 ##############################################################################################
 ### intial number of TRIPS from routecheck_2019 on 09 October 2019 ###########################

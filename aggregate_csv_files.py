@@ -205,6 +205,66 @@ idterm_vehtype_portata.to_sql("idterm_portata", con=connection, schema="public",
           if_exists='append', index=False)
 
 
+## add an index to the 'idterm' column of the "idterm_portata" table
+cur_HAIG.execute("""
+CREATE index idtermportata_idterm_idx on public.idterm_portata(idterm);
+""")
+conn_HAIG.commit()
+
+## add an index to the 'idterm' column of the "obu" table
+cur_HAIG.execute("""
+CREATE index obu_idterm_idx on public.obu(idterm);
+""")
+conn_HAIG.commit()
+
+
+# ### join table "obu" and "idterm_portata"
+# cur_HAIG.execute(""" CREATE TABLE obu_new as(
+#                            select idterm_portata.idterm,
+#                                   idterm_portata.vehtype,
+#                                   idterm_portata.portata,
+#                                   obu.devicetype,
+#                                   obu.idvehcategory, obu.brand, obu.anno, obu.gender, obu.age
+#                         FROM idterm_portata
+#                         LEFT JOIN obu ON idterm_portata.idterm = obu.idterm);
+#                         """)
+# conn_HAIG.commit()
+
+
+# erase existing table
+# cur_HAIG.execute("DROP TABLE IF EXISTS obu_new CASCADE")
+# conn_HAIG.commit()
+
+count_vehtype = pd.read_sql_query('''
+              SELECT vehtype, COUNT(*)
+              FROM public.obu_new 
+              group by vehtype ''', conn_HAIG)
+
+
+# all_idterms = pd.read_sql_query('''
+#                       select *
+#                         FROM obu ''', conn_HAIG)
+# all_idterms = all_idterms.drop_duplicates(subset=['idterm'])
+# engine = sal.create_engine('postgresql://postgres:superuser@10.0.0.1:5432/HAIG_Viasat_RM_2019')
+# connection = engine.connect()
+# all_idterms.to_sql("obu_new", con=connection, schema="public",
+#                     if_exists='append')
+
+cur_HAIG.execute("""
+CREATE index obu_idterm_idx on public.obu_new(idterm);
+""")
+conn_HAIG.commit()
+
+with engine.connect() as conn, conn.begin():
+    print(conn)
+    sql = """ALTER TABLE public.obu_new RENAME TO obu"""
+    conn.execute(sql)
+
+with engine.connect() as conn, conn.begin():
+    print(conn)
+    sql = """ALTER TABLE public.mapmatching_new RENAME TO mapmatching"""
+    conn.execute(sql)
+
 
 #################################################################################
 #################################################################################
@@ -280,14 +340,33 @@ all_idterms.drop_duplicates(['idterm'], inplace=True)
 ### get all terminals corresponding to 'cars' and 'fleet' (from routecheck_2019)
 count_idterm = pd.read_sql_query('''
               SELECT vehtype, COUNT(*)
-              /*FROM public.routecheck_november_2019*/
+              /*FROM public.routecheck_2019*/
               FROM public.dataraw 
               group by vehtype ''', conn_HAIG)
+
 
 count_vehtype = pd.read_sql_query('''
               SELECT vehtype, COUNT(*)
               FROM public.idterm_portata 
               group by vehtype ''', conn_HAIG)
+
+
+### get all terminals corresponding to 'fleet' (from routecheck_2019)
+viasat_fleet = pd.read_sql_query('''
+              SELECT idterm, vehtype
+              FROM public.idterm_portata
+              WHERE vehtype = '2' ''', conn_HAIG)
+# make an unique list
+idterms_fleet = list(viasat_fleet.idterm.unique())
+# with open("D:/ENEA_CAS_WORK/ROMA_2019/idterms_fleet.txt", "w") as file:
+#     file.write(str(idterms_fleet))
+
+# viasat_fleet = pd.read_sql_query('''
+#               SELECT idterm, vehtype
+#               FROM public.dataraw
+#               WHERE vehtype = '2' ''', conn_HAIG)
+# idterms_fleet = list(viasat_fleet.idterm.unique())
+
 
 
 ################################################################
@@ -315,8 +394,7 @@ viasat_data.to_csv('D:/ENEA_CAS_WORK/ROMA_2019/viasat_data_4080125_ordered.csv')
 
 '''
 
-## add geometry WGS84 4286
-## add geometry WGS84 4286 (Salerno, Italy)
+## add geometry WGS84 4286 to dataraw (POINT,4326)
 cur_HAIG.execute("""
 alter table dataraw add column geom geometry(POINT,4326)
 """)
@@ -324,10 +402,171 @@ alter table dataraw add column geom geometry(POINT,4326)
 cur_HAIG.execute("""
 update dataraw set geom = st_setsrid(st_point(longitude,latitude),4326)
 """)
-routecheck_2017
 
 conn_HAIG.commit()
+
+cur_HAIG.execute("""
+CREATE index dataraw_geom_idx on public.dataraw(geom);
+""")
+conn_HAIG.commit()
+
+cur_HAIG.execute("""
+CREATE index dataraw_lat_idx on public.dataraw(latitude);
+""")
+conn_HAIG.commit()
+
+cur_HAIG.execute("""
+CREATE index dataraw_lon_idx on public.dataraw(longitude);
+""")
+conn_HAIG.commit()
+
 
 '''
 
 
+
+
+####################################################################
+####################################################################
+from shapely import wkb
+import geopandas as gpd
+# Function to generate WKB hex
+def wkb_hexer(line):
+    return line.wkb_hex
+
+## function to transform Geometry from text to LINESTRING
+def wkb_tranformation(line):
+   return wkb.loads(line.geom, hex=True)
+
+
+## load EDGES from OSM
+route = pd.read_sql_query('''
+                            SELECT *
+                            FROM route 
+                            /*LIMIT 1000*/''',conn_HAIG)
+### transform "geom" into a Linestring
+route['geometry'] = route.apply(wkb_tranformation, axis=1)
+route.drop(['geom'], axis=1, inplace= True)
+route = gpd.GeoDataFrame(route)
+# route.plot()
+
+
+
+## load EDGES from OSM
+nights = pd.read_sql_query('''
+                            SELECT *
+                            FROM nights_py 
+                            /*LIMIT 1000*/''',conn_HAIG)
+### transform "geom" into Points
+nights['geometry'] = nights.apply(wkb_tranformation, axis=1)
+nights.drop(['geom'], axis=1, inplace= True)
+nights = gpd.GeoDataFrame(nights)
+# nights.plot()
+
+
+## load EDGES from OSM
+residenze = pd.read_sql_query('''
+                            SELECT *
+                            FROM residenze 
+                            /*LIMIT 1000*/''',conn_HAIG)
+### transform "geom" into Points
+residenze['geometry'] = residenze.apply(wkb_tranformation, axis=1)
+residenze.drop(['geom'], axis=1, inplace= True)
+residenze = gpd.GeoDataFrame(residenze)
+# residenze.plot()
+
+####################################################################################
+### create basemap (Roma)
+import folium
+
+ave_LAT = 41.888009265234906
+ave_LON = 12.500281904062206
+my_map = folium.Map([ave_LAT, ave_LON], zoom_start=11, tiles='cartodbpositron')
+####################################################################################
+
+
+### plot georeferenced POINTS
+## https://jingwen-z.github.io/how-to-draw-a-variety-of-maps-with-folium-in-python/
+
+## get longitude and latitude of each point
+nights['longitude'] = nights['geometry'].x
+nights['latitude'] = nights['geometry'].y
+
+for i, v in nights.iterrows():
+    popup = (v['n_nights'])
+    folium.CircleMarker(location=[v['latitude'], v['longitude']],
+                        radius=1,
+                        tooltip=popup,
+                        color='#FFBA00',
+                        fill_color='#FFBA00',
+                        fill=True).add_to(my_map)
+
+path = 'D:/ENEA_CAS_WORK/ROMA_2019/'
+my_map.save(path + "number_nights_ROMA_2019.html")
+
+
+####################################################################################
+####################################################################################
+### create basemap (Roma)
+import folium
+ave_LAT = 41.888009265234906
+ave_LON = 12.500281904062206
+my_map = folium.Map([ave_LAT, ave_LON], zoom_start=11, tiles='cartodbpositron')
+####################################################################################
+
+### plot georeferenced POINTS
+## https://jingwen-z.github.io/how-to-draw-a-variety-of-maps-with-folium-in-python/
+
+## get longitude and latitude of each point
+residenze['longitude'] = residenze['geometry'].x
+residenze['latitude'] = residenze['geometry'].y
+
+for i, v in residenze.iterrows():
+    popup = (v['n_points'])
+    folium.CircleMarker(location=[v['latitude'], v['longitude']],
+                        radius=1,
+                        tooltip=popup,
+                        color='#FFBA00',
+                        fill_color='#FFBA00',
+                        fill=True).add_to(my_map)
+
+path = 'D:/ENEA_CAS_WORK/ROMA_2019/'
+my_map.save(path + "number_residenze_ROMA_2019.html")
+
+
+###############################################################
+###############################################################
+### Change name to table ######################################
+
+with engine.connect() as conn, conn.begin():
+    print(conn)
+    sql = """ALTER TABLE public.accuracy_2019 RENAME TO accuracy"""
+    conn.execute(sql)
+
+
+with engine.connect() as conn, conn.begin():
+    print(conn)
+    sql = """ALTER TABLE public.routecheck_2019 RENAME TO routecheck"""
+    conn.execute(sql)
+
+with engine.connect() as conn, conn.begin():
+    print(conn)
+    sql = """ALTER TABLE public.route_2019 RENAME TO route"""
+    conn.execute(sql)
+
+with engine.connect() as conn, conn.begin():
+    print(conn)
+    sql = """ALTER TABLE public.nights RENAME TO nights_py"""
+    conn.execute(sql)
+
+
+with engine.connect() as conn, conn.begin():
+    print(conn)
+    sql = """ALTER TABLE public.mapmatching_2019 RENAME TO mapmatching_all"""
+    conn.execute(sql)
+
+
+with engine.connect() as conn, conn.begin():
+    print(conn)
+    sql = """ALTER TABLE public.obu_new RENAME TO obu"""
+    conn.execute(sql)
