@@ -68,14 +68,14 @@ conn_HAIG.commit()
 
 
 # long time run...
-## create a consecutive ID for each row
+## create a consecutive ID for each row  (----->>> order by ideterm and timedate......)
 cur_HAIG.execute("""
 alter table "dataraw" add id serial PRIMARY KEY
      """)
 conn_HAIG.commit()
 
-#### add an index to the "idterm"
 
+#### add an index to the "idterm"
 cur_HAIG.execute("""
 CREATE index dataraw_idterm_idx on public.dataraw(idterm);
 """)
@@ -169,8 +169,8 @@ pool.join()
 pool.terminate()
 '''
 
-
-## add indices ######
+#################################################################################
+## add indices routecheck #######################################################
 
 ### change type of "idterm" from text to bigint
 cur_HAIG.execute("""
@@ -239,6 +239,89 @@ CREATE index routecheck_lon_idx on public.routecheck(longitude);
 """)
 conn_HAIG.commit()
 
+
+cur_HAIG.execute("""
+CREATE index routecheck_border_idx on public.routecheck(border);
+""")
+conn_HAIG.commit()
+
+
+### --->>>>>   new routecheck <<<<<-------------------------------------------------
+####################################################################################
+
+
+### change type of "idterm" from text to bigint
+cur_HAIG.execute("""
+ALTER TABLE public.routecheck_new ALTER COLUMN "idterm" TYPE bigint USING "idterm"::bigint
+""")
+conn_HAIG.commit()
+
+cur_HAIG.execute("""
+CREATE index routecheck_new_id_idx on public.routecheck_new("id");
+""")
+conn_HAIG.commit()
+
+
+cur_HAIG.execute("""
+CREATE index routecheck_new_idterm_idx on public.routecheck_new("idterm");
+""")
+conn_HAIG.commit()
+
+
+
+cur_HAIG.execute("""
+CREATE index routecheck_new_TRIP_ID_idx on public.routecheck_new("TRIP_ID");
+""")
+conn_HAIG.commit()
+
+
+cur_HAIG.execute("""
+CREATE index routecheck_new_idtrajectory_ID_idx on public.routecheck_new("idtrajectory");
+""")
+conn_HAIG.commit()
+
+
+cur_HAIG.execute("""
+CREATE index routecheck_new_timedate_idx on public.routecheck_new("timedate");
+""")
+conn_HAIG.commit()
+
+
+cur_HAIG.execute("""
+CREATE index routecheck_new_grade_idx on public.routecheck_new("grade");
+""")
+conn_HAIG.commit()
+
+
+
+cur_HAIG.execute("""
+CREATE index routecheck_new_anomaly_idx on public.routecheck_new("anomaly");
+""")
+conn_HAIG.commit()
+
+
+cur_HAIG.execute("""
+CREATE index routecheck_new_speed_idx on public.routecheck_new("speed");
+""")
+conn_HAIG.commit()
+
+
+cur_HAIG.execute("""
+CREATE index routecheck_new_lat_idx on public.routecheck_new(latitude);
+""")
+conn_HAIG.commit()
+
+
+cur_HAIG.execute("""
+CREATE index routecheck_new_lon_idx on public.routecheck_new(longitude);
+""")
+conn_HAIG.commit()
+
+
+cur_HAIG.execute("""
+CREATE index routecheck_new_border_idx on public.routecheck(border);
+""")
+conn_HAIG.commit()
 
 ####################################################################################
 ####################################################################################
@@ -329,6 +412,101 @@ cur_HAIG.execute("""
 CREATE index route_deviation_pos_idx on public.route(deviation_pos_m);
 """)
 conn_HAIG.commit()
+
+### create index for 'border_flag'
+cur_HAIG.execute("""
+CREATE index route_border_flag_idx on public.route(border_flag);
+""")
+conn_HAIG.commit()
+
+
+
+####### NEW TABLE "route" #############################################
+#### -->>>>> ##########################################################
+
+
+# long time run...
+## create a consecutive ID for each row
+cur_HAIG.execute("""
+alter table "route_new" add id serial PRIMARY KEY
+     """)
+conn_HAIG.commit()
+
+
+## create an ndex on the "id" field
+cur_HAIG.execute("""
+CREATE index route_new_id_idx on public.route_new("id");
+""")
+conn_HAIG.commit()
+
+
+
+### change type of "idterm" from text to bigint
+cur_HAIG.execute("""
+ALTER TABLE public.route_new ALTER COLUMN "idterm" TYPE bigint USING "idterm"::bigint
+""")
+conn_HAIG.commit()
+
+
+### create index for 'idterm'
+cur_HAIG.execute("""
+CREATE index route_new_idterm_idx on public.route_new(idterm);
+""")
+conn_HAIG.commit()
+
+
+### create index for 'idtrajectory'
+cur_HAIG.execute("""
+CREATE index route_new_idtrajectory_idx on public.route_new(idtrajectory);
+""")
+conn_HAIG.commit()
+
+
+### create index for 'tripdistance_m'
+cur_HAIG.execute("""
+CREATE index route_new_tripdistance_idx on public.route_new(tripdistance_m);
+""")
+conn_HAIG.commit()
+
+
+### create index for 'timedate_o'
+cur_HAIG.execute("""
+CREATE index route_new_timedate_idx on public.route_new(timedate_o);
+""")
+conn_HAIG.commit()
+
+
+### create index for 'breaktime_s'
+cur_HAIG.execute("""
+CREATE index route_new_breaktime_idx on public.route_new(breaktime_s);
+""")
+conn_HAIG.commit()
+
+
+### create index for 'triptime_s'
+cur_HAIG.execute("""
+CREATE index route_new_triptime_s_idx on public.route_new(triptime_s);
+""")
+conn_HAIG.commit()
+
+
+
+### create index for 'deviation_pos_m'
+cur_HAIG.execute("""
+CREATE index route_new_deviation_pos_idx on public.route_new(deviation_pos_m);
+""")
+conn_HAIG.commit()
+
+### create index for 'border_flag'
+cur_HAIG.execute("""
+CREATE index route_new_border_flag_idx on public.route_new(border_flag);
+""")
+conn_HAIG.commit()
+
+
+## ------>>>>> #######################################################################
+######################################################################################
+######################################################################################
 
 
 

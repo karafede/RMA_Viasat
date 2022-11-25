@@ -13,7 +13,6 @@ from datetime import datetime
 from datetime import date
 import numpy as np
 
-
 os.chdir('D:/ViaSat/VIASAT_RM')
 cwd = os.getcwd()
 
