@@ -41,9 +41,9 @@ cur_HAIG = conn_HAIG.cursor()
 # Create an SQL connection engine to the output DB
 engine = sal.create_engine('postgresql://postgres:superuser@10.1.0.1:5432/HAIG_ROMA')
 
-cur_HAIG.execute("UPDATE residenze_trenta SET residence = null;")
+cur_HAIG.execute("UPDATE residenze SET residence = null;")
 #Query the database to obtain the list of idterm with residence
-cur_HAIG.execute("SELECT idterm FROM nights_trenta_py order by idterm;")
+cur_HAIG.execute("SELECT idterm FROM nights_py order by idterm;")
 records = cur_HAIG.fetchall()
 idTerminale=[]
 for row in records:
@@ -55,16 +55,16 @@ for idTerm in idTerminale:
     ## Query the database and obtain data as Python objects
     ## calculate minimum distance (LIMIT 1) between the "residence point" and the "nighttime parking point"
     cur_HAIG.execute("SELECT DISTINCT ON (mindist) pippo.id, pippo.idterm, cast(pippo.mindist as integer) as mindist "
-    "FROM (SELECT  residenze_trenta.id, residenze_trenta.idterm, residenze_trenta.n_points, residenze_trenta.avgparkingtime_s, residenze_trenta.geom, ST_Distance(ST_Transform(residenze_trenta.geom, 32632), ST_Transform(nights_trenta_py.geom,32632)) as mindist "
-    "FROM residenze_trenta inner join nights_trenta_py on nights_trenta_py.idterm= residenze_trenta.idterm "
-    "where residenze_trenta.idterm="+idTerm+")pippo Order By mindist ASC LIMIT 1")
+    "FROM (SELECT  residenze.id, residenze.idterm, residenze.n_points, residenze.avgparkingtime_s, residenze.geom, ST_Distance(ST_Transform(residenze.geom, 32632), ST_Transform(nights_py.geom,32632)) as mindist "
+    "FROM residenze inner join nights_py on nights_py.idterm= residenze.idterm "
+    "where residenze.idterm="+idTerm+")pippo Order By mindist ASC LIMIT 1")
     records = cur_HAIG.fetchall()
     #print(records.shape)
     id=str(records[0][0])
     idterm=str(records[0][1])
     dist=str(records[0][2])
     print(id, idterm, dist)
-    cur_HAIG.execute("UPDATE residenze_trenta SET residence ="+dist+" WHERE id="+id+" and idterm="+idterm+";")
+    cur_HAIG.execute("UPDATE residenze SET residence ="+dist+" WHERE id="+id+" and idterm="+idterm+";")
 # Make the changes to the database persistent
 conn_HAIG.commit()
 # Close communication with the database

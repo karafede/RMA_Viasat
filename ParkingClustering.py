@@ -51,8 +51,8 @@ deltaT=[]
 idTerminale=[]
 sep=","
 #Query to create db_residencePY
-cur_HAIG.execute("DROP TABLE IF EXISTS public.residenze CASCADE")
-cur_HAIG.execute("CREATE  TABLE public.residenze "
+cur_HAIG.execute("DROP TABLE IF EXISTS public.residenze_trenta CASCADE")
+cur_HAIG.execute("CREATE  TABLE public.residenze_trenta "
 "(id bigserial primary key, "
 " idTerm integer  NOT NULL, "
 " n_points smallint NOT NULL,"
@@ -69,10 +69,10 @@ for row in records:
 
 for idTerm in idTerminale:
     # Query the database and obtain data as Python objects
-    cur_HAIG.execute("SELECT ST_X(ST_Transform(dt_d.geom, 32632)), ST_Y(ST_Transform(dt_d.geom, 32632)), route.breaktime_s "
-                "FROM route "
-                "inner join dataraw as dt_d on dt_d.id=route.idtrace_d "
-                "where route.idterm="+idTerm+" and route.breaktime_s>10*60 "
+    cur_HAIG.execute("SELECT ST_X(ST_Transform(dt_d.geom, 32632)), ST_Y(ST_Transform(dt_d.geom, 32632)), route_trenta.breaktime_s "
+                "FROM route_trenta "
+                "inner join dataraw as dt_d on dt_d.id=route_trenta.idtrace_d "
+                "where route_trenta.idterm="+idTerm+" and route_trenta.breaktime_s>10*60 "
                 "order by dt_d.timedate; ")
     records = cur_HAIG.fetchall()
     if(len(records)<3): continue
@@ -97,8 +97,8 @@ for idTerm in idTerminale:
         ptm=int(float(sum(pTime))/float(len(pTime)))
         print(idTerm, xm, ym, frequenza, ptm)
         input = "(" + str(idTerm) + sep + str(frequenza) + sep + str(ptm)+ sep + "ST_Transform(st_setsrid(st_makepoint(" + str(xm) + "," + str(ym) + "), 32632), 4326))";
-        cur_HAIG.execute("INSERT INTO public.residenze (idTerm, n_points, avgparkingtime_s, geom)" + " VALUES " + input + "");
-cur_HAIG.execute("CREATE INDEX residenze_idterm ON public.residenze USING btree (idTerm);");
+        cur_HAIG.execute("INSERT INTO public.residenze_trenta (idTerm, n_points, avgparkingtime_s, geom)" + " VALUES " + input + "");
+cur_HAIG.execute("CREATE INDEX residenze_trenta_idterm ON public.residenze_trenta USING btree (idTerm);");
 
 '''    
     labels=kmeans_clusters.kmeans(lon,lat, len(records))

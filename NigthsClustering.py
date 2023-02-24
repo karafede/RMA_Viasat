@@ -50,8 +50,8 @@ deltaT=[]
 idTerminale=[]
 sep=","
 #Query to create db_residencePY
-cur_HAIG.execute("DROP TABLE IF EXISTS public.nights_py CASCADE")
-cur_HAIG.execute("CREATE  TABLE public.nights_py "
+cur_HAIG.execute("DROP TABLE IF EXISTS public.nights_trenta_py CASCADE")
+cur_HAIG.execute("CREATE  TABLE public.nights_trenta_py "
 "(id bigserial primary key, "
 " idTerm integer  NOT NULL, "
 " n_points smallint NOT NULL,"
@@ -68,67 +68,67 @@ for idTerm in idTerminale:
     # Query the database and obtain data as Python objects
     '''
     query=("SELECT ST_X(ST_Transform(dataraw.geom, 32632)), ST_Y(ST_Transform(dataraw.geom, 32632)), " 
-          "CASE WHEN ((DATE (dataraw.timedate + (route.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL)=0) " 
-          "AND (dataraw.timedate+('2 hour')::INTERVAL)<(date_trunc('day', dataraw.timedate + route.breaktime_s * ('1 second')::INTERVAL+('2 hour')::INTERVAL) + '03:00:00')) "
+          "CASE WHEN ((DATE (dataraw.timedate + (route_trenta.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL)=0) " 
+          "AND (dataraw.timedate+('2 hour')::INTERVAL)<(date_trunc('day', dataraw.timedate + route_trenta.breaktime_s * ('1 second')::INTERVAL+('2 hour')::INTERVAL) + '03:00:00')) "
           "THEN 1 "
-          "WHEN (DATE (dataraw.timedate + (route.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL)>0) "
-          "AND ((date_trunc('day', dataraw.timedate + route.breaktime_s * ('1 second')::INTERVAL+('2 hour')::INTERVAL) + '03:00:00')>((dataraw.timedate + (route.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL))) "
-          "THEN ((DATE (dataraw.timedate + (route.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL))-1) "
-          "ELSE DATE(dataraw.timedate + (route.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL) "
+          "WHEN (DATE (dataraw.timedate + (route_trenta.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL)>0) "
+          "AND ((date_trunc('day', dataraw.timedate + route_trenta.breaktime_s * ('1 second')::INTERVAL+('2 hour')::INTERVAL) + '03:00:00')>((dataraw.timedate + (route_trenta.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL))) "
+          "THEN ((DATE (dataraw.timedate + (route_trenta.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL))-1) "
+          "ELSE DATE(dataraw.timedate + (route_trenta.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL) "
           "END as nights "
-          "FROM route "
-          "inner join dataraw on dataraw.id=route.idtrace_d "
-          "where route.idterm="+idTerm+" and dataraw.panel=2 and breaktime_s>4*3600 and "
-          "((DATE (dataraw.timedate + (route.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL)=0 "
-          "AND (dataraw.timedate+('2 hour')::INTERVAL)<(date_trunc('day', dataraw.timedate + route.breaktime_s * ('1 second')::INTERVAL+('2 hour')::INTERVAL) + '03:00:00')) "
-          "OR (DATE (dataraw.timedate + (route.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL)>0)) "
+          "FROM route_trenta "
+          "inner join dataraw on dataraw.id=route_trenta.idtrace_d "
+          "where route_trenta.idterm="+idTerm+" and dataraw.panel=2 and breaktime_s>4*3600 and "
+          "((DATE (dataraw.timedate + (route_trenta.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL)=0 "
+          "AND (dataraw.timedate+('2 hour')::INTERVAL)<(date_trunc('day', dataraw.timedate + route_trenta.breaktime_s * ('1 second')::INTERVAL+('2 hour')::INTERVAL) + '03:00:00')) "
+          "OR (DATE (dataraw.timedate + (route_trenta.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL)>0)) "
           "order by dataraw.timedate")
     '''
     ### transform coordinates degress (4326) into cartographical coodinates (32632) (meters) to make calculations...
     query=("SELECT  ST_X(ST_Transform(dataraw.geom, 32632)), ST_Y(ST_Transform(dataraw.geom, 32632)), "
           "CASE "
-          "WHEN ((DATE (dataraw.timedate + (route.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL))=0 "
+          "WHEN ((DATE (dataraw.timedate + (route_trenta.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL))=0 "
           "AND (EXTRACT(hour from(dataraw.timedate+('2 hour')::INTERVAL))<3 "
-          "AND  EXTRACT(hour from (dataraw.timedate + route.breaktime_s * ('1 second')::INTERVAL+('2 hour')::INTERVAL))>=3 )) "
+          "AND  EXTRACT(hour from (dataraw.timedate + route_trenta.breaktime_s * ('1 second')::INTERVAL+('2 hour')::INTERVAL))>=3 )) "
           "THEN 1 "
-          "WHEN ((DATE (dataraw.timedate + (route.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL))>0 " 
+          "WHEN ((DATE (dataraw.timedate + (route_trenta.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL))>0 " 
           "AND (EXTRACT(hour from(dataraw.timedate+('2 hour')::INTERVAL))>=3 "
-          "AND  EXTRACT(hour from (dataraw.timedate + route.breaktime_s * ('1 second')::INTERVAL+('2 hour')::INTERVAL))<3 )) "
-          "THEN (DATE (dataraw.timedate + (route.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL))-1 "
-          "WHEN ((DATE (dataraw.timedate + (route.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL))>0 "
+          "AND  EXTRACT(hour from (dataraw.timedate + route_trenta.breaktime_s * ('1 second')::INTERVAL+('2 hour')::INTERVAL))<3 )) "
+          "THEN (DATE (dataraw.timedate + (route_trenta.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL))-1 "
+          "WHEN ((DATE (dataraw.timedate + (route_trenta.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL))>0 "
           "AND (EXTRACT(hour from(dataraw.timedate+('2 hour')::INTERVAL))>=3 "
-          "AND  EXTRACT(hour from (dataraw.timedate + route.breaktime_s * ('1 second')::INTERVAL+('2 hour')::INTERVAL))>=3 )) "
-          "THEN (DATE (dataraw.timedate + (route.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL))  "
-          "WHEN ((DATE (dataraw.timedate + (route.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL))>0 "
+          "AND  EXTRACT(hour from (dataraw.timedate + route_trenta.breaktime_s * ('1 second')::INTERVAL+('2 hour')::INTERVAL))>=3 )) "
+          "THEN (DATE (dataraw.timedate + (route_trenta.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL))  "
+          "WHEN ((DATE (dataraw.timedate + (route_trenta.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL))>0 "
           "AND (EXTRACT(hour from(dataraw.timedate+('2 hour')::INTERVAL))<3 "
-          "AND  EXTRACT(hour from (dataraw.timedate + route.breaktime_s * ('1 second')::INTERVAL+('2 hour')::INTERVAL))<3 )) "
-          "THEN (DATE (dataraw.timedate + (route.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL)) "
-          "WHEN ((DATE (dataraw.timedate + (route.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL))>0 "
+          "AND  EXTRACT(hour from (dataraw.timedate + route_trenta.breaktime_s * ('1 second')::INTERVAL+('2 hour')::INTERVAL))<3 )) "
+          "THEN (DATE (dataraw.timedate + (route_trenta.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL)) "
+          "WHEN ((DATE (dataraw.timedate + (route_trenta.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL))>0 "
           "AND (EXTRACT(hour from(dataraw.timedate+('2 hour')::INTERVAL))<3 "
-          "AND  EXTRACT(hour from (dataraw.timedate + route.breaktime_s * ('1 second')::INTERVAL+('2 hour')::INTERVAL))>=3 )) "
-          "THEN (DATE (dataraw.timedate + (route.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL))+1  "
+          "AND  EXTRACT(hour from (dataraw.timedate + route_trenta.breaktime_s * ('1 second')::INTERVAL+('2 hour')::INTERVAL))>=3 )) "
+          "THEN (DATE (dataraw.timedate + (route_trenta.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL))+1  "
           "END as nights "
-          "FROM route "
-          "inner join dataraw on dataraw.id=route.idtrace_d "
-          "where route.idterm="+idTerm+" and breaktime_s>4*3600 and "
+          "FROM route_trenta "
+          "inner join dataraw on dataraw.id=route_trenta.idtrace_d "
+          "where route_trenta.idterm="+idTerm+" and breaktime_s>4*3600 and "
           "( "
-          "((DATE (dataraw.timedate + (route.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL))=0 "
+          "((DATE (dataraw.timedate + (route_trenta.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL))=0 "
 		  "AND (EXTRACT(hour from(dataraw.timedate+('2 hour')::INTERVAL))<3 "
-		  "AND  EXTRACT(hour from (dataraw.timedate + route.breaktime_s * ('1 second')::INTERVAL+('2 hour')::INTERVAL))>=3 )) "
+		  "AND  EXTRACT(hour from (dataraw.timedate + route_trenta.breaktime_s * ('1 second')::INTERVAL+('2 hour')::INTERVAL))>=3 )) "
           "OR "
-          "((DATE (dataraw.timedate + (route.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL))>1) "
+          "((DATE (dataraw.timedate + (route_trenta.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL))>1) "
 	      "OR "
-	      "((DATE (dataraw.timedate + (route.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL))=1 "
+	      "((DATE (dataraw.timedate + (route_trenta.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL))=1 "
 	      "AND (EXTRACT(hour from(dataraw.timedate+('2 hour')::INTERVAL))>=3 "
-	      "AND  EXTRACT(hour from (dataraw.timedate + route.breaktime_s * ('1 second')::INTERVAL+('2 hour')::INTERVAL))>=3 )) "
+	      "AND  EXTRACT(hour from (dataraw.timedate + route_trenta.breaktime_s * ('1 second')::INTERVAL+('2 hour')::INTERVAL))>=3 )) "
           "OR "
-	      "((DATE (dataraw.timedate + (route.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL))=1 "
+	      "((DATE (dataraw.timedate + (route_trenta.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL))=1 "
 	      "AND (EXTRACT(hour from(dataraw.timedate+('2 hour')::INTERVAL))<3 "
-	      "AND  EXTRACT(hour from (dataraw.timedate + route.breaktime_s * ('1 second')::INTERVAL+('2 hour')::INTERVAL))>=3 )) "
+	      "AND  EXTRACT(hour from (dataraw.timedate + route_trenta.breaktime_s * ('1 second')::INTERVAL+('2 hour')::INTERVAL))>=3 )) "
           "OR "
-	     "((DATE (dataraw.timedate + (route.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL))=1 "
+	     "((DATE (dataraw.timedate + (route_trenta.breaktime_s * ('1 second')::INTERVAL)+('2 hour')::INTERVAL) - DATE(dataraw.timedate+('2 hour')::INTERVAL))=1 "
 	      "AND (EXTRACT(hour from(dataraw.timedate+('2 hour')::INTERVAL))<3 "
-	      "AND  EXTRACT(hour from (dataraw.timedate + route.breaktime_s * ('1 second')::INTERVAL+('2 hour')::INTERVAL))<3 )) "
+	      "AND  EXTRACT(hour from (dataraw.timedate + route_trenta.breaktime_s * ('1 second')::INTERVAL+('2 hour')::INTERVAL))<3 )) "
           ") "           
           "order by dataraw.timedate")
     cur_HAIG.execute(query)
@@ -162,9 +162,9 @@ for idTerm in idTerminale:
             nn_max=n_nights
             print(idTerm, xm, ym, frequenza, n_nights)
     if  input_best:
-        cur_HAIG.execute("INSERT INTO public.nights_py (idTerm, n_points, n_nights, geom)" + " VALUES " + input_best + "");
+        cur_HAIG.execute("INSERT INTO public.nights_trenta_py (idTerm, n_points, n_nights, geom)" + " VALUES " + input_best + "");
 
-cur_HAIG.execute("CREATE INDEX nights_idterm ON public.nights_py USING btree (idTerm);");
+cur_HAIG.execute("CREATE INDEX nights_idterm_trenta ON public.nights_trenta_py USING btree (idTerm);");
 
 # Make the changes to the database persistent
 conn_HAIG.commit()
