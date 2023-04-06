@@ -1,0 +1,325 @@
+---
+title: "Summary stats ROMA"
+author:
+- Federico Karagulian
+date: "ultima versione `r format(Sys.time(), '%d %B %Y, %H:%M')`"
+output:
+  word_document: 
+    reference_docx: word_style_FK.docx
+  pdf_document: default
+  html_document: default
+  number_sections: true
+  bookdown::word_document: default
+---
+  
+  
+*<br/><br/>*
+
+```{r, message = FALSE, echo = FALSE, warning = FALSE, fig.width=9,fig.height=5,  fig.cap = "**Figura 1.** xxxxxx"}
+
+
+### TO DO....statistiche varie:
+# 1) numero medio di viaggi (weekend on and weekdays)
+# 2) percorrenze e tempi medie giornaliere (km)
+# 3) percorrenza media di un viaggio
+# 4) durata viaggio
+# 5) medium GYRATION radius
+
+
+
+
+rm(list = ls())
+
+library(ggplot2)
+library(stringr)
+library(tidyr)
+library(readr)
+library(broom)
+library(threadr)
+library(dplyr)
+library(dygraphs)
+library(ggpmisc)
+library(plotly)
+library(GGally)
+library(htmlwidgets)
+library(htmltools)
+library(webshot)
+library(ggrepel)
+library(openair)
+library(widgetframe)
+library(grid)
+library(gridExtra)
+library(pander)
+library(varhandle)
+options(scipen=5)
+options(warn=-1)
+library(RPostgreSQL)
+options(scipen=5)
+
+
+# loads the PostgreSQL driver
+drv <- dbDriver("PostgreSQL")
+
+
+conn_HAIG <- dbConnect(drv, dbname = "HAIG_ROMA",
+                       host = "10.1.0.1", port = 5432,       
+                       user = "postgres", password = "superuser")
+
+## list all TABLES
+# dbListTables(conn_HAIG)
+
+count_vehtype = dbGetQuery(conn_HAIG,"
+              SELECT vehtype, COUNT(*)
+              FROM public.idterm_portata 
+              group by vehtype ")
+
+# \"OSM_edges\"
+
+
+
+
+route_new = dbGetQuery(conn_HAIG, "SELECT  \"route_FK_new\".\"Id_Viaggi\",
+                                      \"route_FK_new\".\"Id_Term\",
+                                      \"route_FK_new\".\"Veh_Type\",
+                                      \"route_FK_new\".\"O_Sosta_Dur\",
+                                      \"route_FK_new\".\"D_Sosta_Dur\",
+                                      \"route_FK_new\".\"Viag_Km\",
+                                      \"route_FK_new\".\"Viag_Durata\",
+                                      \"route_FK_new\".\"O_TipoSosta\",
+                                      \"route_FK_new\".\"D_TipoSosta\"
+                               FROM  \"route_FK_new\"
+                               LEFT JOIN \"idterm_Info_FK\"
+                                    ON \"route_FK_new\".\"Id_Term\" = \"idterm_Info_FK\".\"Id_Term\"
+                                      ")
+
+info_route = dbGetQuery(conn_HAIG, "SELECT  *
+                               FROM  \"idterm_Info_FK\"
+                                      ")
+
+route <- route_new %>%
+  left_join(info_route, by = c("Id_Term", "Veh_Type"))
+## remove duplicated "Id_Term"
+route <- route[!duplicated(route$Id_Viaggi), ]
+
+route$Veh_Type <- as.character(route$Veh_Type)
+
+route$Veh_Type <- gsub("1","Car", (route$Veh_Type))
+route$Veh_Type <- gsub("2","Fleet", (route$Veh_Type))
+remove(route_new, info_route)
+
+route <- route[complete.cases(route), ]
+## speed
+route$speed_trip = (route$Viag_Km)/(route$Viag_Durata)  ## km/h
+route <- route %>%
+  filter(speed_trip > 1 & speed_trip < 240)
+
+
+route <- as.data.frame(route)
+
+
+```
+
+  
+*<br/><br/>*
+
+
+
+```{r, message = FALSE, echo = FALSE, warning = FALSE, fig.width=9,fig.height=5,  fig.cap = "**Figura 2.** xxxxxx"}
+
+
+## distribution of the speeds ###
+### plot a distribution
+p <- ggplot(route, aes(x = speed_trip)) +
+  theme_bw() +
+  geom_density(stat = 'bin') +
+  facet_wrap( ~ Veh_Type, nrow = 2) +
+  scale_x_continuous(trans='log10') +
+  theme(legend.title=element_blank()) + 
+  aes(y=stat(count)/sum(stat(count))) + 
+  scale_y_continuous(labels = scales::percent) +
+  theme_bw() +
+  theme( strip.text = element_text(size = 10)) +
+  guides(fill=FALSE) +
+  theme(axis.text.x=element_text(angle=0,hjust=0.5,vjust=1, size=15)) +
+  theme(axis.text.x=element_text(size=15, colour = "black")) +
+  theme(axis.title.x = element_text(face="bold", colour="black", size=15)) +
+  xlab("speed (km/h)") +
+  ylab("frequency (%)") +
+  # xlim(0,100)+
+   geom_vline(xintercept = 5, col="blue", lty=2, size=1) +
+   geom_vline(xintercept = 20, col="black", lty=2, size=1) +
+   geom_vline(xintercept = 30, col="red", lty=2, size=1) +
+  # geom_vline(xintercept = 10, col="blue", lty=2, size=1) +
+   geom_text(aes(x = 6 , y = 0.15 , label = "5 km/h"), size = 4) +
+   geom_text(aes(x = 22 , y = 0.17 , label = "20 km/h"), size = 4) +
+   geom_text(aes(x = 32 , y = 0.20 , label = "30 km/h"), size = 4) +
+  theme(axis.title.y = element_text(face="bold", colour="black", size=15),
+        axis.text.y  = element_text(angle=0, vjust=0.5, size=15, colour="black")) +
+  ggtitle("distribution of mean speed during the trips") +
+  theme(plot.title = element_text(lineheight=.8, face="bold", size = 18))
+p
+
+
+
+
+
+```
+
+
+
+  
+*<br/><br/>*
+*<br/><br/>*
+
+
+```{r, message = FALSE, echo = FALSE, warning = FALSE, fig.width=9,fig.height=5,  fig.cap = "**Figura 4.** xxxxxx"}
+
+## convert D_Sosta_Dur into minutes
+route$breaktime_m <- (route$D_Sosta_Dur)*60
+
+
+### plot a distribution
+p <- ggplot(route, aes(x = breaktime_m)) +
+  theme_bw() +
+  geom_density(stat = 'bin') +
+  facet_wrap( ~ Veh_Type, nrow = 2) +
+  scale_x_continuous(trans='log10') +
+  theme(legend.title=element_blank()) + 
+  aes(y=stat(count)/sum(stat(count))) + 
+  scale_y_continuous(labels = scales::percent) +
+  theme_bw() +
+  theme( strip.text = element_text(size = 10)) +
+  guides(fill=FALSE) +
+  theme(axis.text.x=element_text(angle=0,hjust=0.5,vjust=1, size=15)) +
+  theme(axis.text.x=element_text(size=15, colour = "black")) +
+  theme(axis.title.x = element_text(face="bold", colour="black", size=15)) +
+  xlab("tempo di sosta (minuti)") +
+  ylab("frequenza (%)") +
+  # xlim(0,100)+
+  #  geom_vline(xintercept = 20, col="blue", lty=2, size=1) +
+  geom_vline(xintercept = 7, col="red", lty=2, size=0.5) +
+  geom_vline(xintercept = 15, col="red", lty=2, size=0.5) +
+    geom_vline(xintercept = 60, col="red", lty=2, size=0.5) +
+  geom_vline(xintercept = 120, col="red", lty=2, size=0.5) +
+    geom_vline(xintercept = 550, col="blue", lty=2, size=0.5) +
+  geom_vline(xintercept = 800, col="blue", lty=2, size=0.5) +
+    geom_vline(xintercept = 1000, col="blue", lty=2, size=0.5) +
+  geom_vline(xintercept = 2500, col="blue", lty=2, size=0.5) +
+  # geom_vline(xintercept = 10, col="blue", lty=2, size=1) +
+  geom_text(aes(x = 850 , y = 0.03 , label = "800 min"), size = 4) +
+  geom_text(aes(x = 60 , y = 0.04 , label = "60 min"), size = 4) +
+   geom_text(aes(x = 7 , y = 0.04 , label = "7 min"), size = 4) +
+   geom_text(aes(x = 15 , y = 0.04 , label = "15 min"), size = 4) +
+  theme(axis.title.y = element_text(face="bold", colour="black", size=15),
+        axis.text.y  = element_text(angle=0, vjust=0.5, size=15, colour="black")) +
+  ggtitle("distribuzione dei tempi di sosta") +
+  theme(plot.title = element_text(lineheight=.8, face="bold", size = 15))
+p
+
+
+
+
+```
+
+
+
+*<br/><br/>*
+*<br/><br/>*
+
+
+```{r, message = FALSE, echo = FALSE, warning = FALSE, fig.width=9,fig.height=5,  fig.cap = "**Figura 5.** xxxxxx"}
+
+route$triptime_m <- (route$Viag_Durata)*60
+
+### plot a distribution
+p <- ggplot(route, aes(x = triptime_m)) +
+  theme_bw() +
+  geom_density(stat = 'bin') +
+  facet_wrap( ~ Veh_Type, nrow = 2) +
+  scale_x_continuous(trans='log10') +
+  theme(legend.title=element_blank()) + 
+  aes(y=stat(count)/sum(stat(count))) + 
+  scale_y_continuous(labels = scales::percent) +
+  theme_bw() +
+  theme( strip.text = element_text(size = 10)) +
+  guides(fill=FALSE) +
+  theme(axis.text.x=element_text(angle=0,hjust=0.5,vjust=1, size=15)) +
+  theme(axis.text.x=element_text(size=15, colour = "black")) +
+  theme(axis.title.x = element_text(face="bold", colour="black", size=15)) +
+  xlab("tempo di viaggio (minuti)") +
+  ylab("frequenza (%)") +
+  # xlim(0,100)+
+  geom_vline(xintercept = 10, col="red", lty=2, size=0.5) +
+  geom_vline(xintercept = 15, col="blue", lty=2, size=0.5) +
+  geom_vline(xintercept = 25, col="red", lty=2, size=0.5) +
+  # geom_vline(xintercept = 10, col="blue", lty=2, size=1) +
+  geom_text(aes(x = 27 , y = 0.15 , label = "25 min"), size = 4) +
+  theme(axis.title.y = element_text(face="bold", colour="black", size=15),
+        axis.text.y  = element_text(angle=0, vjust=0.5, size=15, colour="black")) +
+  ggtitle("distribuzione dei tempi di viaggio") +
+  theme(plot.title = element_text(lineheight=.8, face="bold", size = 15))
+p
+
+
+
+```
+
+
+*<br/><br/>*
+*<br/><br/>*
+
+
+
+```{r, message = FALSE, echo = FALSE, warning = FALSE, fig.width=9,fig.height=5,  fig.cap = "**Figura 2.** Distanza di Viaggio"}
+
+
+## distribution of the tripdistance_m ###
+### plot a distribution
+p <- ggplot(route, aes(x = Viag_Km)) +
+  theme_bw() +
+  geom_density(stat = 'bin') +
+  facet_wrap( ~ Veh_Type, nrow = 2) +
+  scale_x_continuous(trans='log10') +
+  theme(legend.title=element_blank()) + 
+  aes(y=stat(count)/sum(stat(count))) + 
+  scale_y_continuous(labels = scales::percent) +
+  theme_bw() +
+  theme( strip.text = element_text(size = 10)) +
+  guides(fill=FALSE) +
+  theme(axis.text.x=element_text(angle=0,hjust=0.5,vjust=1, size=15)) +
+  theme(axis.text.x=element_text(size=15, colour = "black")) +
+  theme(axis.title.x = element_text(face="bold", colour="black", size=15)) +
+  xlab("distanza (km)") +
+  ylab("frequenza (%)") +
+  # xlim(0,100)+
+  geom_vline(xintercept = 0.1, col="blue", lty=2, size=0.5) +
+  geom_vline(xintercept = 0.2, col="red", lty=2, size=0.5) +
+  geom_vline(xintercept = 0.3, col="grey", lty=2, size=0.5) +
+  geom_vline(xintercept = 0.4, col="black", lty=2, size=0.5) +
+  geom_vline(xintercept = 0.5, col="black", lty=2, size=0.5) +
+  geom_vline(xintercept = 0.6, col="green", lty=2, size=0.5) +
+  geom_vline(xintercept = 1, col="blue", lty=2, size=0.5) +
+  geom_vline(xintercept = 2, col="blue", lty=2, size=0.5) +
+  geom_vline(xintercept = 6, col="blue", lty=2, size=0.5) +
+  # geom_vline(xintercept = 10, col="blue", lty=2, size=1) +
+  # geom_text(aes(x = 10 , y = 0.13 , label = "10 km"), size = 4) +
+  geom_text(aes(x = 6 , y = 0.13 , label = "6 km"), size = 4) +
+  theme(axis.title.y = element_text(face="bold", colour="black", size=15),
+        axis.text.y  = element_text(angle=0, vjust=0.5, size=15, colour="black")) +
+  ggtitle("distribuzione della distanza percorsa per viaggio") +
+  theme(plot.title = element_text(lineheight=.8, face="bold", size = 15))
+p
+
+
+
+```
+
+
+*<br/><br/>*
+*<br/><br/>*
+
+
+
+
+
+

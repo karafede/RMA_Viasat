@@ -94,7 +94,7 @@ with open("D:/ENEA_CAS_WORK/ROMA_2019/all_idterms.txt", "w") as file:
 """
 
 with open("D:/ENEA_CAS_WORK/ROMA_2019/all_idterms.txt", "r") as file:
-     all_ID_TRACKS = eval(file.readline())
+      all_ID_TRACKS = eval(file.readline())
 
 ## reload 'all_ID_TRACKS' as list
 # with open("D:/ENEA_CAS_WORK/ROMA_2019/all_idterms_new.txt", "r") as file:
@@ -126,7 +126,7 @@ with open("D:/ENEA_CAS_WORK/ROMA_2019/all_idterms.txt", "r") as file:
 # track_ID = '3103312'
 # track_ID = '3109045'
 # track_ID = '3135499'
-# track_ID = '4497310'
+# track_ID = '5442341'
 
 
 
@@ -298,8 +298,8 @@ def func(arg):
         # viasat = viasat[viasat.year_month == '2019-03']  ## March
         # viasat = viasat[viasat.year_month == '2019-11']  ## November
         if len(viasat) > 0:
-            # viasat = viasat.sort_values('timedate')
-            viasat = viasat.sort_values('idrequest')
+            viasat = viasat.sort_values(['timedate', 'idrequest'])
+            # viasat = viasat.sort_values('idrequest')
             # make one field with time in seconds
             viasat['path_time'] = viasat['hour'] * 3600 + viasat['minute'] * 60 + viasat['seconds']
             viasat = viasat.reset_index()
@@ -419,28 +419,6 @@ def func(arg):
                             ## ---->>>> compute increments of the distance (in meters) <<<<-----------------
                             VIASAT_TRIP['increment'] = VIASAT_TRIP.progressive - VIASAT_TRIP.last_progressive
 
-
-                            """
-                            ## ------>>> remove rows with worong progressive and therefore timedate  <<<<<----------
-                            if (sum(VIASAT_TRIP['progressive']) > 0):
-                                try:
-                                    ## ------>>> remove rows with wrong progressive and therefore timedate  <<<<<----------
-                                    idx_to_remove = VIASAT_TRIP['increment'][VIASAT_TRIP.increment < 0].index
-                                    ## check the position of the negative increment within the dataframe
-                                    new_data = VIASAT_TRIP.reset_index(drop=True)
-                                    if ((new_data['increment'][new_data.increment < 0].index[0] == len(VIASAT_TRIP) - 1) or
-                                            (new_data['increment'][new_data.increment < 0].index[0] == len(VIASAT_TRIP) - 2) or
-                                            (new_data['increment'][new_data.increment < 0].index[0] == len(VIASAT_TRIP) - 3) or
-                                            (new_data['increment'][new_data.increment < 0].index[0] == len(VIASAT_TRIP) - 4) or
-                                            (new_data['increment'][new_data.increment < 0].index[0] == len(VIASAT_TRIP) - 5)
-                                    ):
-                                        VIASAT_TRIP = VIASAT_TRIP
-                                    else:
-                                        list_idx_to_remove = list(range(VIASAT_TRIP.index[0], idx_to_remove[0] + 1))
-                                        VIASAT_TRIP.drop(list_idx_to_remove, axis=0, inplace=True)
-                                except IndexError:
-                                    pass
-                            """
 
                             VIASAT_TRIP.reset_index(drop=True, inplace=True)
                             # print(VIASAT_TRIP)
@@ -631,108 +609,6 @@ def func(arg):
                             Lat_Min_Int = Lat_Min + ext
                             Lon_Min_Int = Lon_Min + ext
                             Lon_Max_Int = Lon_Max - ext
-
-
-                            """
-                            stoptime_s = VIASAT_TRIP[VIASAT_TRIP.segment == max(VIASAT_TRIP.segment)][['next_timedate']].iloc[0][0] - \
-                                          VIASAT_TRIP[VIASAT_TRIP.segment == max(VIASAT_TRIP.segment)][['timedate']].iloc[0][0]
-                            stoptime_s = stoptime_s.total_seconds()
-
-                            first_point_lon = \
-                            VIASAT_TRIP[VIASAT_TRIP.segment == min(VIASAT_TRIP.segment)][['longitude']].iloc[0][0]
-                            first_point_lat = \
-                            VIASAT_TRIP[VIASAT_TRIP.segment == min(VIASAT_TRIP.segment)][['latitude']].iloc[0][0]
-                            last_point_lon = \
-                            VIASAT_TRIP[VIASAT_TRIP.segment == max(VIASAT_TRIP.segment)][['longitude']].iloc[0][0]
-                            last_point_lat = \
-                            VIASAT_TRIP[VIASAT_TRIP.segment == max(VIASAT_TRIP.segment)][['latitude']].iloc[0][0]
-
-                            ##----> as agreed with Maria Pia and Valentine, first define all "in_out"
-
-                            # first and last points are within the border
-                            if ((first_point_lat <= Lat_Max) and (first_point_lat >= Lat_Min) and
-                                (first_point_lon >= Lon_Min) and (first_point_lon <= Lon_Max) and
-                                 (last_point_lat <= Lat_Max) and (last_point_lat >= Lat_Min) and
-                                (last_point_lon >= Lon_Min) and (last_point_lon <= Lon_Max)):
-                                print("-----------------------------> in ----------------")
-                                VIASAT_TRIP['border'] = "in"
-
-                            #  1) first point near/inside the border ( and engine on)
-                            #  2) last point inside the border (engine on)
-                            # if ( (first_point_lat <= Lat_Max)  and (first_point_lat >= Lat_Min) and (first_point_lon >= Lon_Min) and
-                            #         (first_point_lon <= Lon_Max) and (last_point_lat <= Lat_Max) and (last_point_lat >= Lat_Min) and (last_point_lon >= Lon_Min) and
-                            #         (last_point_lon <= Lon_Max) and VIASAT_TRIP[VIASAT_TRIP.segment == min(VIASAT_TRIP.segment)][['panel']].iloc[0][0] == 1 and
-                            #        VIASAT_TRIP[VIASAT_TRIP.segment == max(VIASAT_TRIP.segment)][['panel']].iloc[0][0] == 1):  # and stoptime_s > 1800
-                            #    print("--------------------------> in_out ----------------")
-                            #    VIASAT_TRIP['border'] = "in_out"
-                            elif (  ((first_point_lat <= Lat_Max) and (first_point_lat >= Lat_Max_Int)) and
-                                    ((first_point_lat >= Lat_Min) and (first_point_lat <= Lat_Min_Int)) and
-                                    ((first_point_lon >= Lon_Min) and (first_point_lon <= Lon_Min_Int)) and
-                                    ((first_point_lon <= Lon_Max)  and (first_point_lon >= Lon_Max_Int)) and
-                                    ((last_point_lat <= Lat_Max) and (last_point_lat >= Lat_Max_Int)) and
-                                    ((last_point_lat >= Lat_Min) and (last_point_lat <= Lat_Min_Int)) and
-                                    ((last_point_lon >= Lon_Min) and (last_point_lon <= Lon_Min_Int)) and
-                                    ((last_point_lon <= Lon_Max) and (last_point_lon >= Lon_Max_Int)) ):
-                                    # VIASAT_TRIP[VIASAT_TRIP.segment == min(VIASAT_TRIP.segment)][['panel']].iloc[0][0] == 1 and
-                                    # VIASAT_TRIP[VIASAT_TRIP.segment == max(VIASAT_TRIP.segment)][['panel']].iloc[0][0] == 1):
-                                print("--------------------------> in_out ----------------")
-                                VIASAT_TRIP['border'] = "in_out"
-
-                                # 1) first point inside the border and progressive > 0 and engine ON
-                                # 2) last point  far from the border (inside) and engine OFF and next stoptime > 30 min (1800 secs)
-                            elif ( ((first_point_lat <= Lat_Max) and (first_point_lat >= Lat_Max_Int)) or
-                                    ((first_point_lat >= Lat_Min) and (first_point_lat <= Lat_Min_Int)) and
-                                    ((first_point_lon >= Lon_Min) and (first_point_lon <= Lon_Min_Int)) and
-                                    ((first_point_lon <= Lon_Max)  and (first_point_lon >= Lon_Max_Int)) and
-                                    (last_point_lat <= Lat_Max_Int) and (last_point_lat >= Lat_Min_Int) and (last_point_lon >= Lon_Min_Int) and
-                                    (last_point_lon <= Lon_Max_Int) ):
-                                    # and VIASAT_TRIP[VIASAT_TRIP.segment == max(VIASAT_TRIP.segment)][['panel']].iloc[0][0] == 0 and
-                                    # VIASAT_TRIP[VIASAT_TRIP.segment == min(VIASAT_TRIP.segment)][['panel']].iloc[0][0] == 1  and
-                                    # VIASAT_TRIP[VIASAT_TRIP.segment == min(VIASAT_TRIP.segment)][['progressive']].iloc[0][0] > 2000  and stoptime_s > 1800):
-                                print("-----------------------> border_in ----------------")
-                                VIASAT_TRIP['border'] = "border_in"
-                            # elif ( ((first_point_lat <= Lat_Max) and (first_point_lat >= Lat_Max_Int)) and
-                            #       ((first_point_lat >= Lat_Min) and (first_point_lat <= Lat_Min_Int)) and
-                            #       ((first_point_lon >= Lon_Min) and (first_point_lon <= Lon_Min_Int)) and
-                            #       ((first_point_lon <= Lon_Max)  and (first_point_lon >= Lon_Max_Int))
-                            #       and (last_point_lat <= Lat_Max_Int) and (last_point_lat >= Lat_Min_Int) and (
-                            #        last_point_lon >= Lon_Min_Int) and (last_point_lon <= Lon_Max_Int) and
-                            #      VIASAT_TRIP[VIASAT_TRIP.segment == max(VIASAT_TRIP.segment)][['panel']].iloc[0][0] == 0 and
-                            #      VIASAT_TRIP[VIASAT_TRIP.segment == min(VIASAT_TRIP.segment)][['panel']].iloc[0][0] == 1 and
-                            #      VIASAT_TRIP[VIASAT_TRIP.segment == min(VIASAT_TRIP.segment)][['progressive']].iloc[0][0] > 2000 and stoptime_s > 1800):
-                            #    print("-----------------------> border_in ----------------")
-                            #    VIASAT_TRIP['border'] = "border_in"
-                                # 1) first point inside the border, last point near the buffer
-                                # 2) last point with engine ON, last progressive > 0
-                            elif ( (first_point_lat <= Lat_Max_Int) and (first_point_lat >= Lat_Min_Int) and
-                                    (first_point_lon >= Lon_Min_Int) and (first_point_lon <= Lon_Max_Int) and
-                                   ((last_point_lat <= Lat_Max) and (last_point_lat >= Lat_Max_Int)) and
-                                   ((last_point_lat >= Lat_Min) and (last_point_lat <= Lat_Min_Int)) and
-                                   ((last_point_lon >= Lon_Min) and (last_point_lon <= Lon_Min_Int)) and
-                                   ((last_point_lon <= Lon_Max) and (last_point_lon >= Lon_Max_Int)) ):
-                                   # VIASAT_TRIP[VIASAT_TRIP.segment == max(VIASAT_TRIP.segment)][['panel']].iloc[0][0] == 1 and
-                                   # VIASAT_TRIP[VIASAT_TRIP.segment == max(VIASAT_TRIP.segment)][['progressive']].iloc[0][0] > 0):
-                                print("--------------------> border_out ----------------")
-                                VIASAT_TRIP['border'] = "border_out"
-                            # elif ((first_point_lat <= Lat_Max_Int) and (first_point_lat >= Lat_Min_Int) and
-                            #     (first_point_lon >= Lon_Min_Int) and (first_point_lon <= Lon_Max_Int) and
-                            #    ((last_point_lat <= Lat_Max) and (last_point_lat >= Lat_Max_Int)) and
-                            #    ((last_point_lat >= Lat_Min) and (last_point_lat <= Lat_Min_Int)) and
-                            #     ((last_point_lon >= Lon_Min) and (last_point_lon <= Lon_Min_Int)) and
-                            #     ((last_point_lon <= Lon_Max) and (last_point_lon >= Lon_Max_Int)) and
-                            #      VIASAT_TRIP[VIASAT_TRIP.segment == max(VIASAT_TRIP.segment)][['panel']].iloc[
-                            #          0][0] == 1 and
-                            #      VIASAT_TRIP[VIASAT_TRIP.segment == max(VIASAT_TRIP.segment)][
-                            #          ['progressive']].iloc[0][0] > 0):
-                                # print("--------------------> border_out ----------------")
-                                # VIASAT_TRIP['border'] = "border_out"
-                                # first and last points are within the border
-                            # elif ((first_point_lat <= Lat_Max) and (first_point_lat >= Lat_Min) and (first_point_lon >= Lon_Min) and
-                            #      (first_point_lon <= Lon_Max) and (last_point_lat <= Lat_Max) and (last_point_lat >= Lat_Min) and
-                            #      (last_point_lon >= Lon_Min) and (last_point_lon <= Lon_Max)):
-                            #    print("-----------------------------> in ----------------")
-                            #    VIASAT_TRIP['border'] = "in"
-                            """
 
 
 

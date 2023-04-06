@@ -17,7 +17,7 @@ import osmnx as ox
 import networkx as nx
 import math
 # import momepy
-from funcs_network_FK import roads_type_folium
+# from funcs_network_FK import roads_type_folium
 from shapely import geometry
 from shapely.geometry import Point, Polygon
 from shapely.geometry import Point, LineString, shape
@@ -28,14 +28,14 @@ import datetime
 from datetime import datetime
 from datetime import date
 from datetime import datetime
-from geoalchemy2 import Geometry, WKTElement
+# from geoalchemy2 import Geometry, WKTElement
 from sqlalchemy import *
 import sqlalchemy as sal
 from sqlalchemy import exc
 import sqlalchemy as sal
 from sqlalchemy.pool import NullPool
 import geopy.distance
-import momepy
+# import momepy
 from shapely import wkb
 import matplotlib
 import matplotlib.pyplot as plt
@@ -52,7 +52,7 @@ import contextlib
 from multiprocessing import Manager
 from multiprocessing import Pool
 
-import dill as Pickle
+# import dill as Pickle
 from joblib import Parallel, delayed
 from joblib.externals.loky import set_loky_pickler
 set_loky_pickler('pickle')
@@ -109,7 +109,7 @@ def great_circle_track_node(lon_end, lat_end, lon_start, lat_start):
 ## get all terminals corresponding to 'cars' and 'fleet' (from routecheck_2019)
 ID_vehicles = pd.read_sql_query('''
                SELECT idterm, vehtype
-               FROM public.routecheck_cinque
+               FROM public.routecheck_trenta
                /*WHERE vehtype = '1'*/
                ''', conn_HAIG)
 # make an unique list
@@ -123,11 +123,11 @@ with open("idterms_2019.txt", "w") as file:
 
 # ## reload all 'idterms' as list
 with open("D:/ENEA_CAS_WORK/ROMA_2019/idterms_2019.txt", "r") as file:
-   idterms = eval(file.readline())
+    idterms = eval(file.readline())
 
 
 # with open("D:/ENEA_CAS_WORK/ROMA_2019/idterms_2019_new.txt", "r") as file:
-#   idterms = eval(file.readline())
+# idterms = eval(file.readline())
 
 
 ## --> check this anomaly (speeds are all zeros and start trip was wrong, panel wrong)
@@ -201,6 +201,7 @@ with open("D:/ENEA_CAS_WORK/ROMA_2019/idterms_2019.txt", "r") as file:
 # idterm = '4380636'
 # idterm = '3104251'
 # idterm = '3192103'
+# idterm = '2725572'
 
 def func(arg):
     last_idterm_idx, idterm = arg
@@ -239,13 +240,12 @@ def func(arg):
         viasat_data['next_idtrajectory'] = viasat_data['next_idtrajectory'].astype('Int64')
         all_trips = list(viasat_data.idtrajectory.unique())
         ### initialize an empty dataframe
-        # route_ROMA = pd.DataFrame([])
+        route_ROMA = pd.DataFrame([])
         for idx, idtrajectory in enumerate(all_trips):
-            # idtrajectory =  43900380
+            # idtrajectory =  98251173
             # print(idtrajectory)
             ## filter data by idterm and by idtrajectory (trip)
             data = viasat_data[viasat_data.idtrajectory == idtrajectory]
-
             ## group by TRIP_ID, check numbers of line, if > 1 then only get the one with larger number of lines
             counts_TRIP_ID = data.groupby(data[['TRIP_ID']].columns.tolist(),
                                                         sort=False).size().reset_index().rename(columns={0: 'counts'})
@@ -278,7 +278,6 @@ def func(arg):
                     # data['next_progressive'] = data.next_progressive.shift(-1)
                     # data['increment_bis'] = data.progressive - data.next_progressive
                     data.reset_index(inplace=True)
-
                     ##---->> remove rows with wrong progressive (correction) ---- as suggested by Andrea Gemma
                     mean_speed_trip = np.mean(data[data.speed > 0]['speed'])
                     delta_time = []
@@ -296,30 +295,6 @@ def func(arg):
                     ## compare "predicted_increment" with observed "increment"
                     data['delta_increment'] = abs(data['increment'] - data['predicted_increment'])
 
-
-                    ### ---->>>> moved into the routecheck algorithm......
-
-                    """
-                    if (sum(data['progressive']) > 0):
-                        try:
-                            ## ------>>> remove rows with wrong progressive and therefore timedate  <<<<<----------
-                            idx_to_remove = data['increment'][data.increment < 0].index
-                            ## check the position of the negative increment within the dataframe
-                            new_data = data.reset_index(drop=True)
-                            if ( (new_data['increment'][new_data.increment < 0].index[0] == len(data)-1)  or
-                                    (new_data['increment'][new_data.increment < 0].index[0] == len(data)-2) or
-                                     (new_data['increment'][new_data.increment < 0].index[0] == len(data)-3) or
-                                      (new_data['increment'][new_data.increment < 0].index[0] == len(data)-4) or
-                                       (new_data['increment'][new_data.increment < 0].index[0] == len(data) -5)
-                            ):
-                                data = data
-                            else:
-                                list_idx_to_remove = list( range(data.index[0], idx_to_remove[0]+1) )
-                                data.drop(list_idx_to_remove, axis=0, inplace=True)
-                        except IndexError:
-                            pass
-                    """
-
                     ## check if idterm is assigned to a fleet and always set starting increment to 0
                     # if data['vehtype'].iloc[0] == 2:
                     data['increment'].iloc[0] = 0
@@ -336,6 +311,7 @@ def func(arg):
                         ## reset_index
                         data = data.reset_index(drop=True)
                         tripdistance_m = sum(data['increment'][0:len(data['increment'])][data.increment > 0])
+                        timedate_d = data[data.segment == max(data.segment)][['timedate']].iloc[0][0]  ## at the DESTINATION
                         # print("tripdistance_meters:  ", tripdistance_m)
 
                         ## trip time in seconds (duration)
@@ -345,6 +321,8 @@ def func(arg):
 
                         # triptime_s = (data['timedate'].iloc[len(data)-1] - data['last_timedate'].iloc[1])
                         triptime_s = (data['timedate'].iloc[len(data) - 1] - data['timedate'].iloc[0])
+                        # triptime_s = (data['timedate'].iloc[len(data) - 1] - data['last_timedate'].iloc[0])
+
                         # print(dt.total_seconds())
                         triptime_s = triptime_s.total_seconds()
 
@@ -354,7 +332,8 @@ def func(arg):
                             # print("triptime (min):  ", triptime_s/60)
                             checkcode = data[data.segment == min(data.segment)][['anomaly']].iloc[0][0] ## at the ORIGIN
                             border_flag = data[data.segment == min(data.segment)][['border']].iloc[0][0]  ## at the ORIGIN
-                            ## intervallo di tempo tra un l'inizio di due viaggi successivi
+
+                            ## intervallo di tempo tra un l'inizio di due viaggi successivi (fine di un viaggio ed inizio di uno nuovo)
                             breaktime_s = data[data.segment == max(data.segment)][['next_timedate']].iloc[0][0] - \
                                           data[data.segment == max(data.segment)][['timedate']].iloc[0][0]
                             breaktime_s = breaktime_s.total_seconds()
@@ -384,6 +363,13 @@ def func(arg):
 
                             ### build the final dataframe ("route" table)
                             # if tripdistance_m > 0 and triptime_s <= 18000 and triptime_s > 0 and speed_trip > 1 and np.mean(data.speed) > 0:    ## <------
+
+                            breaktime_s_bis = breaktime_s
+                            if border_flag == 'in_out':
+                                breaktime_s_bis = 0
+                            elif border_flag == 'border_out':
+                                breaktime_s_bis = 0
+
                             df_ROUTE = pd.DataFrame({'idtrajectory': [idtrajectory],
                                                      'idterm': [idterm],
                                                      'idtrace_o': [idtrace_o],
@@ -393,46 +379,77 @@ def func(arg):
                                                      # 'latitude_d': [latitude_d],
                                                      # 'longitude_d': [longitude_d],
                                                      'timedate_o': [timedate_o],
+                                                     'timedate_d': [timedate_d],
                                                      'tripdistance_m': [tripdistance_m],
                                                      'triptime_s': [triptime_s],
                                                      'checkcode': [checkcode],
-                                                     'breaktime_s': [breaktime_s],
+                                                     # 'breaktime_s': [breaktime_s],
+                                                     'breaktime_s': [breaktime_s_bis],
+                                                     'breaktime_s_old': [breaktime_s],
                                                      'border_flag': [border_flag]})
                             geom = df['geometry'].apply(wkb_hexer)
                             df_ROUTE['geom'] = geom.iloc[0]
                             df_ROUTE['deviation_pos_m'] = deviation_pos
                             df_ROUTE['diff_last_next_progr'] = diff_last_next_progr
-                            # route_ROMA = route_ROMA.append(df_ROUTE)
+                            route_ROMA = route_ROMA.append(df_ROUTE)
 
-                            try:
-                                connection = engine.connect()
-                                # df_ROUTE.to_sql("route_test_fk", con=connection, schema="public",
-                                #               if_exists='append')
-                                # df_ROUTE.to_sql("route_3130436", con=connection, schema="public",
-                                #                 if_exists='append')
-                                # df_ROUTE.to_sql("route_5922139", con=connection, schema="public",
-                                #                 if_exists='append')
-                                # df_ROUTE.to_sql("route_5912730", con=connection, schema="public",
-                                #                if_exists='append')
-                                df_ROUTE.to_sql("route_cinque", con=connection, schema="public",
-                                                if_exists='append')
-                                connection.close()
-                            except exc.OperationalError:
-                                print('OperationalError')
-                            except ZeroDivisionError:
-                                pass
-                                connection = engine.connect()
-                                # df_ROUTE.to_sql("route_test_fk", con=connection, schema="public",
-                                #               if_exists='append')
-                                # df_ROUTE.to_sql("route_3130436", con=connection, schema="public",
-                                #                 if_exists='append')
-                                # df_ROUTE.to_sql("route_5922139", con=connection, schema="public",
-                                #                 if_exists='append')
-                                # df_ROUTE.to_sql("route_5912730", con=connection, schema="public",
-                                #                if_exists='append')
-                                df_ROUTE.to_sql("route_cinque", con=connection, schema="public",
-                                                if_exists='append')
-                                connection.close()
+                            route_ROMA['last_timedate_o'] = route_ROMA.timedate_o.shift()
+                            route_ROMA['triptime_s_last'] = route_ROMA.triptime_s.shift()
+
+                            new_breaktime = []
+                            for i in range(len(route_ROMA)):
+                                delta_triptime_s = (route_ROMA['timedate_o'].iloc[i] - route_ROMA['last_timedate_o'].iloc[i])
+                                breaktime_s_new = (delta_triptime_s.total_seconds() - route_ROMA['triptime_s_last'].iloc[i])
+                                new_breaktime.append(breaktime_s_new)
+                                ## remove first element of the list
+                            new_breaktime.pop(0)
+                            new_breaktime.append(None)
+                            route_ROMA['breaktime_s_new'] = new_breaktime
+
+                            route_ROMA = route_ROMA[['idtrajectory', 'idterm', 'idtrace_o', 'idtrace_d', 'timedate_o', 'timedate_d',
+                                                     'tripdistance_m', 'triptime_s', 'checkcode', 'breaktime_s',
+                                                     'breaktime_s_new', 'breaktime_s_old', 'border_flag', 'geom', 'deviation_pos_m', 'diff_last_next_progr']]
+
+                            # https://stackoverflow.com/questions/49681363/replace-negative-values-in-single-dataframe-column
+                            # AAA = route_ROMA
+                            ## sett all negative valuse of "breaktime_s_new" into zero
+                            route_ROMA.breaktime_s_new = np.where(route_ROMA.breaktime_s_new < 0, None, route_ROMA.breaktime_s_new)
+
+                            route_ROMA['triptime_s'] = route_ROMA.triptime_s.astype('Int64')
+                            route_ROMA['breaktime_s'] = route_ROMA.breaktime_s.astype('Int64')
+                            route_ROMA['breaktime_s_new'] = route_ROMA.breaktime_s_new.astype('Int64')
+                            route_ROMA['breaktime_s_old'] = route_ROMA.breaktime_s_old.astype('Int64')
+
+
+        try:
+            connection = engine.connect()
+            # df_ROUTE.to_sql("route_test_fk", con=connection, schema="public",
+            #               if_exists='append')
+            # df_ROUTE.to_sql("route_3130436", con=connection, schema="public",
+            #                 if_exists='append')
+            # df_ROUTE.to_sql("route_5922139", con=connection, schema="public",
+            #                 if_exists='append')
+            # df_ROUTE.to_sql("route_5912730", con=connection, schema="public",
+            #                if_exists='append')
+            route_ROMA.to_sql("route_cinque", con=connection, schema="public",
+                            if_exists='append')
+            connection.close()
+        except exc.OperationalError:
+            print('OperationalError')
+        except ZeroDivisionError:
+            pass
+            connection = engine.connect()
+            # df_ROUTE.to_sql("route_test_fk", con=connection, schema="public",
+            #               if_exists='append')
+            # df_ROUTE.to_sql("route_3130436", con=connection, schema="public",
+            #                 if_exists='append')
+            # df_ROUTE.to_sql("route_5922139", con=connection, schema="public",
+            #                 if_exists='append')
+            # df_ROUTE.to_sql("route_5912730", con=connection, schema="public",
+            #                if_exists='append')
+            route_ROMA.to_sql("route_cinque", con=connection, schema="public",
+                            if_exists='append')
+            connection.close()
 
 
 ################################################
@@ -444,7 +461,7 @@ def func(arg):
 
 if __name__ == '__main__':
     # pool = mp.Pool(processes=mp.cpu_count()) ## use all available processors
-    pool = mp.Pool(processes=15)     ## use 60 processors
+    pool = mp.Pool(processes=25)     ## use 60 processors
     print("++++++++++++++++ POOL +++++++++++++++++", pool)
     results = pool.map(func, [(last_idterm_idx, idterm) for last_idterm_idx, idterm in enumerate(idterms)])
     pool.close()

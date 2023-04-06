@@ -69,10 +69,10 @@ for row in records:
 
 for idTerm in idTerminale:
     # Query the database and obtain data as Python objects
-    cur_HAIG.execute("SELECT ST_X(ST_Transform(dt_d.geom, 32632)), ST_Y(ST_Transform(dt_d.geom, 32632)), route_trenta.breaktime_s "
-                "FROM route_trenta "
-                "inner join dataraw as dt_d on dt_d.id=route_trenta.idtrace_d "
-                "where route_trenta.idterm="+idTerm+" and route_trenta.breaktime_s>10*60 "
+    cur_HAIG.execute("SELECT ST_X(ST_Transform(dt_d.geom, 32632)), ST_Y(ST_Transform(dt_d.geom, 32632)), route_trenta_tris.breaktime_s "
+                "FROM route_trenta_tris "
+                "inner join dataraw as dt_d on dt_d.id=route_trenta_tris.idtrace_d "
+                "where route_trenta_tris.idterm="+idTerm+" and route_trenta_tris.breaktime_s>10*60 "
                 "order by dt_d.timedate; ")
     records = cur_HAIG.fetchall()
     if(len(records)<3): continue

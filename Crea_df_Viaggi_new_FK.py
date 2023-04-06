@@ -73,9 +73,6 @@ engine = sal.create_engine('postgresql://postgres:superuser@10.1.0.1:5432/HAIG_R
 
 
 
-
-
-
 def tempo(Testo, T_ini):
     # ==================================================================
     #   tempo(Testo, T_ini)
@@ -163,19 +160,6 @@ def Setta_Fl_Viaggio(dati1v):
     else:
         Fl_Viag[k] = 22
 
-    # _______________________________________________Inizio NOV. e Fine MAR.
-    if sum(dati1v.timedate > '2019-04-01') > 1:
-        k = dati1v[dati1v.timedate > '2019-04-01'].index[0]
-        if k > 0:  # Assicura che MARZO è presente
-            if ((dati1v.longitude[k] < Lon_Min_Int) | \
-                    (dati1v.longitude[k] > Lon_Max_Int) | \
-                    (dati1v.latitude[k] < Lat_Min_Int) | \
-                    (dati1v.latitude[k] > Lat_Max_Int)):
-                Fl_Viag[k] = 13
-                Fl_Viag[k - 1] = 23
-            else:
-                Fl_Viag[k] = 12
-                Fl_Viag[k - 1] = 22
 
     # ==================================================================
     # ______ calcola:   INIZIO-FINE     da CONFINE  ____________________
@@ -494,185 +478,6 @@ def Setta_Soste_Generiche_Notte_e_Giorno(_Fl_Stampa):
     return (TipoSosta, pun_Notti_Strane_D, pun_Notti_Strane_O)
 
 
-def Calcola_Coord_Case():
-    # ==========================================================================
-    #
-    #    Calcolo  coord. PRIMA e SECONDA CASA
-    #
-    #    "Matr_Cluster" = Matrice quadrata di dimensioni = al N° di soste notte
-    #    Nella 1° colonna mette un 1 a tutte le soste vicine alla sosta N° 1
-    #    Nella 2° colonna mette un 1 a tutte le soste vicine alla sosta N° 2
-    #    .......
-    #    La colonna con più "1" indica  tutte le soste della PRIMA CASA.
-    #    Se nella "Matr_Cluster" si azzerano le soste della prima casa, si può
-    #    ricercare la seconda sosta più frequente == SECONDA CASA
-    # ==========================================================================
-    # Variab.Uscita:   Coord_1_Casa  = Longit. e Latitud. 1° casa
-    #                  Coord_2_Casa  = Longit. e Latitud. 2° casa
-    #                                          Sono = 0 se non si trovano
-    #                  Numero_Case        = N° di case trovate: 0, 1, 2
-    #
-    # Es. chiamata:    Coord_1_Casa, Coord_2_Cas, N_Case = Calcola_Coord_Case()
-    # ==========================================================================
-    Coord_1_Casa = [-1, -1]
-    Coord_2_Casa = [-1, -1]
-    Numero_Case = 0
-
-    pun_Soste_Notte = dati1v.index[(dati1v.TipoSosta == 220) & (dati1v.Fl_Viag != 21)].values
-    Matr_Cluster = np.zeros((len(pun_Soste_Notte), len(pun_Soste_Notte)), dtype=int)
-
-    for k in range(len(pun_Soste_Notte)):
-        Lon = dati1v.longitude[pun_Soste_Notte[k]]  # Coord. sosta
-        Lat = dati1v.latitude[pun_Soste_Notte[k]]
-
-        LoMin = Lon - D_lon;
-        LoMax = Lon + D_lon  # Coor. RIQUADRO
-        LaMin = Lat - D_lat;
-        LaMax = Lat + D_lat
-
-        LoX = dati1v.longitude[pun_Soste_Notte]  # Coord. di tutte  le soste
-        LaX = dati1v.latitude[pun_Soste_Notte]
-        # Punt.Soste interne alRIQUADRO
-        pun = (LoX > LoMin) & (LoX < LoMax) & \
-              (LaX > LaMin) & (LaX < LaMax)
-        Matr_Cluster[:, k] = pun * 1
-
-    Massimi = sum(Matr_Cluster)
-
-    if len(Matr_Cluster) > 0:
-        if max(Massimi) < 2:
-
-            Coord_1_Casa = [0, 0]
-            Coord_2_Casa = [0, 0]
-        else:
-            Sosta_con_Cluster_piu_grande = np.arange(len(Massimi))[Massimi == max(Massimi)][0]
-            Tutte_le_Soste_del_Cluster = Matr_Cluster[:, Sosta_con_Cluster_piu_grande] == 1
-
-            Coord_1_Casa = \
-                [round(np.mean(dati1v.longitude[pun_Soste_Notte[Tutte_le_Soste_del_Cluster]]), 6), \
-                 round(np.mean(dati1v.latitude[pun_Soste_Notte[Tutte_le_Soste_del_Cluster]]), 6)]
-
-            Numero_Case = 1
-
-            # ______________________________________________________________________________
-            #
-            #       TROVA SECONDA CASA
-            #
-            # Toglie da 'Matr_Cluster' i veic della prima casa e cerca una seconda casa
-            # ______________________________________________________________________________
-
-            for k in range(len(pun_Soste_Notte)):
-                if Tutte_le_Soste_del_Cluster[k]:
-                    Matr_Cluster[k, :] = 0
-
-            Massimi = sum(Matr_Cluster)
-            if max(Massimi) < 2:
-
-                Coord_2_Casa = [0, 0]
-            else:
-                Sosta_con_Cluster_piu_grande = np.arange(len(Massimi))[Massimi == max(Massimi)][0]
-                Tutte_le_Soste_del_Cluster = Matr_Cluster[:, Sosta_con_Cluster_piu_grande] == 1
-
-                Coord_2_Casa = \
-                    [round(np.mean(dati1v.longitude[pun_Soste_Notte[Tutte_le_Soste_del_Cluster]]), 6), \
-                     round(np.mean(dati1v.latitude[pun_Soste_Notte[Tutte_le_Soste_del_Cluster]]), 6)]
-                Numero_Case = 2
-
-    return (Coord_1_Casa, Coord_2_Casa, Numero_Case)
-
-
-def Calcola_Coord_Lavori(_Sosta_Lav_Min):
-    # ==========================================================================
-    #
-    #    T R O V A  coordinate   PRIMO e SECONDO LAVORO
-    #
-    #    "Matr_Cluster" = Matrice quadrata di dimensioni = al N° di soste notte
-    #    Nella 1° colonna mette un 1 a tutte le soste vicine alla sosta N° 1
-    #    Nella 2° colonna mette un 1 a tutte le soste vicine alla sosta N° 2
-    #    .......
-    #    La colonna con più "1" indica  tutte le soste del PRIMO LAVORO.
-    #    Se nella "Matr_Cluster" si azzerano le soste del primo lavoro, si può
-    #    ricercare la seconda sosta più frequente = SECONDO LAVORO
-    # ==========================================================================
-    #
-    # Variab.Uscita:   Coord_1_Lavoro  = Longit. e Latitud. 1° Lavoro
-    #                  Coord_2_Lavoro  = Longit. e Latitud. 2° Lavoro
-    #                                          Sono = 0 se non si trovano
-    #                  Numero_Lavori        = N° di Lavori trovate: 0, 1, 2
-    #
-    # Es. chiamata:    Coord_1_Lavoro, Coord_2_Lavoro, N_Lavori = Calcola_Coord_Lavori(Sosta_Lav_Min)
-    # ==========================================================================
-
-    # print('CORREGGERE SOSTA_LAVORO_MINIMA', '*'*50)
-    # print( '*'*50, ' Ora è :', _Sosta_Lav_Min, 'ore')
-    Coord_1_Lavoro = [-1, -1]
-    Coord_2_Lavoro = [-1, -1]
-    Numero_Lavori = 0
-
-    pun_Soste_Giorno = dati1v.index[(dati1v.TipoSosta == 210) & \
-                                    (dati1v.Delta_sec > _Sosta_Lav_Min * 3600)].values
-
-    Matr_Cluster = np.zeros((len(pun_Soste_Giorno), len(pun_Soste_Giorno)), dtype=int)
-
-    for k in range(len(pun_Soste_Giorno)):
-        Lon = dati1v.longitude[pun_Soste_Giorno[k]]  # Coord. sosta
-        Lat = dati1v.latitude[pun_Soste_Giorno[k]]
-
-        LoMin = Lon - D_lon;
-        LoMax = Lon + D_lon  # Coor. RIQUADRO
-        LaMin = Lat - D_lat;
-        LaMax = Lat + D_lat
-
-        LoX = dati1v.longitude[pun_Soste_Giorno]  # Coord. di tutte  le soste
-        LaX = dati1v.latitude[pun_Soste_Giorno]
-        # Punt.Soste interne alRIQUADRO
-        pun = (LoX > LoMin) & (LoX < LoMax) & \
-              (LaX > LaMin) & (LaX < LaMax)
-        Matr_Cluster[:, k] = pun * 1
-
-    Massimi = sum(Matr_Cluster)
-
-    if len(Matr_Cluster) > 0:
-        if max(Massimi) < 2:
-
-            Coord_1_Lavoro = [0, 0]
-            Coord_2_Lavoro = [0, 0]
-        else:
-            Sosta_con_Cluster_piu_grande = np.arange(len(Massimi))[Massimi == max(Massimi)][0]
-            Tutte_le_Soste_del_Cluster = Matr_Cluster[:, Sosta_con_Cluster_piu_grande] == 1
-
-            Coord_1_Lavoro = \
-                [round(np.mean(dati1v.longitude[pun_Soste_Giorno[Tutte_le_Soste_del_Cluster]]), 6), \
-                 round(np.mean(dati1v.latitude[pun_Soste_Giorno[Tutte_le_Soste_del_Cluster]]), 6)]
-
-            Numero_Lavori = 1
-
-            # ______________________________________________________________________________
-            #
-            #       TROVA SECONDO LAVORO
-            #
-            # Toglie da 'Matr_Cluster' i veic del primo lavoro e cerca il secondo lavoro
-            # ______________________________________________________________________________
-
-            for k in range(len(pun_Soste_Giorno)):
-                if Tutte_le_Soste_del_Cluster[k]:
-                    Matr_Cluster[k, :] = 0
-
-                Massimi = sum(Matr_Cluster)
-                if max(Massimi) < 2:
-
-                    Coord_2_Lavoro = [0, 0]
-                else:
-                    Sosta_con_Cluster_piu_grande = np.arange(len(Massimi))[Massimi == max(Massimi)][0]
-                    Tutte_le_Soste_del_Cluster = Matr_Cluster[:, Sosta_con_Cluster_piu_grande] == 1
-
-                    Coord_2_Lavoro = \
-                        [round(np.mean(dati1v.longitude[pun_Soste_Giorno[Tutte_le_Soste_del_Cluster]]), 6), \
-                         round(np.mean(dati1v.latitude[pun_Soste_Giorno[Tutte_le_Soste_del_Cluster]]), 6)]
-                    Numero_Lavori = 2
-
-    return (Coord_1_Lavoro, Coord_2_Lavoro, Numero_Lavori)
-
 
 def Setta_Soste_Specifica(Fine_Sosta_Generica, \
                           Fine_Sosta_Specifica, Inizio_Sosta_Specifica,
@@ -748,7 +553,7 @@ def Calcola_Coord_Case():
     Coord_2_Casa = [-1, -1]
     Numero_Case = 0
 
-    pun_Soste_Notte = dati1v.index[(dati1v.TipoSosta == 220) & (dati1v.Fl_Viag != 21)].values
+    pun_Soste_Notte = dati1v.index[(dati1v.TipoSosta == 220) & (dati1v.Fl_Viag != 21)].values  ### ---> (dati1v.Fl_Viag != 23)
     Matr_Cluster = np.zeros((len(pun_Soste_Notte), len(pun_Soste_Notte)), dtype=int)
 
     for k in range(len(pun_Soste_Notte)):
@@ -1247,7 +1052,6 @@ Lat_Max_Int = Lat_Max_Ris - D_lat * M
 
 t0 = tempo('INIZIO: ', 0)
 
-# filed = 'C:\\Users\\asus pc\\.spyder-py3\\Mio_BRESCIA_dati\\Marzo_2019\\Dati_con_1576_Veic.csv'
 
 # dati = pd.read_csv("pippo_11_2.csv", index_col=None)
 # dati = pd.read_csv(filed, index_col=0)
@@ -1306,8 +1110,6 @@ _____________________________Vaiabili da Aggiungere
 # tempo("==== "+ str(len(Veic_considerati))+ " sono i veicoli utili             ", t0)
 
 
-
-
 #==============================================================================
 #  I N I Z I O   F O R     per caricare 1 veicolo x volta
 #==============================================================================
@@ -1329,7 +1131,8 @@ Causa_veic_elim = []
 all_VIASAT_IDterminals = pd.read_sql_query(
     ''' SELECT *
         FROM public.idterm_portata
-        WHERE vehtype = 1 ''', conn_HAIG)
+        /*WHERE vehtype = 1 */
+        ''', conn_HAIG)
 
 all_VIASAT_IDterminals['idterm'] = all_VIASAT_IDterminals['idterm'].astype('Int64')
 all_VIASAT_IDterminals['vehtype'] = all_VIASAT_IDterminals['vehtype'].astype('Int64')
@@ -1339,10 +1142,10 @@ all_VIASAT_IDterminals['vehtype'] = all_VIASAT_IDterminals['vehtype'].astype('In
 Veic_considerati = list(all_VIASAT_IDterminals.idterm.unique())
 # Veic_considerati = Veic_considerati[0:20000]
 # Veic_considerati = Veic_considerati[20001:40000]
-# Veic_considerati = Veic_considerati[0:10]
+# Veic_considerati = Veic_considerati[0:1000]
 
 
-# track_ID = '4165307'
+# track_ID = '5917612'
 # for kv in  range( len(Veic_considerati[0:3]) ):
 for kv, track_ID in enumerate(Veic_considerati):
     #==============================================================================
@@ -1453,7 +1256,7 @@ for kv, track_ID in enumerate(Veic_considerati):
     # dati1v['progressive'] = dati1v.progressive - dati1v.progressive [0]
 
     #...............................................
-    if Veic_da_Eliminare == 0:       # = 0 il veicolo viene ELABORATO
+    if Veic_da_Eliminare == 0:  # = 0 il veicolo viene ELABORATO
                                 # = 1  "     "   è eliminato
 
         #######################################################################
@@ -1467,7 +1270,6 @@ for kv, track_ID in enumerate(Veic_considerati):
         dati1v['TipoSosta'] = TipoSosta
 
         #__________________________________________Soste notturne fuori confine
-        #_____________________________________ e nell'intervallo Marzo-Novembre
         Notti_Out = sum(dati1v.Fl_Viag[dati1v.TipoSosta==220] == 21) + \
                     sum(dati1v.Fl_Viag[dati1v.TipoSosta==220] == 22) + \
                     sum(dati1v.Fl_Viag[dati1v.TipoSosta==220] == 23)
@@ -1528,6 +1330,7 @@ for kv, track_ID in enumerate(Veic_considerati):
 
         dati1v.loc[ (dati1v.Fl_Viag==21) & (dati1v.TipoSosta==210), 'TipoSosta'] = 217
         dati1v.loc[ (dati1v.Fl_Viag==11) & (dati1v.TipoSosta==110), 'TipoSosta'] = 117
+        # AAA = list(df_Viag_1v.TipoSosta.unique())
 
         #==============================================================================
         #   L A V O R O     Trova Coord.   e    Setta "TipoSosta"

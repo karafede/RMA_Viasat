@@ -24,7 +24,7 @@ cur_HAIG = conn_HAIG.cursor()
 # get all ID terminal of Viasat data
 all_VIASAT_TRIP_IDs = pd.read_sql_query(
     ''' SELECT DISTINCT "TRIP_ID" 
-        FROM public.mapmatching ''', conn_HAIG)
+        FROM public.mapmatching_2019 ''', conn_HAIG)
 
 
 ###################################################################
@@ -196,3 +196,78 @@ route = pd.read_sql_query('''
 #             SELECT * FROM public.route
 #             WHERE idterm = '%s'
 #             AND idtrajectory = '123275963'  ''' % idterm, conn_HAIG)
+
+
+############################################################################
+############################################################################
+#########------------------------------------------- #######################
+#########--------------------------------------------#######################
+############################################################################
+############################################################################
+############################################################################
+#######----------------------------------------------#######################
+### GET all IDs of ELECTIC VEHICLES ########################################
+############################################################################
+############################################################################
+############################################################################
+
+
+# connect to new DB to be populated with Viasat data after route-check
+# conn_HAIG = db_connect.connect_HAIG_BRESCIA()
+conn_HAIG = db_connect.connect_HAIG_ROMA()
+# conn_HAIG = db_connect.connect_HAIG_CATANIA()
+# conn_HAIG = db_connect.connect_HAIG_SALERNO()
+cur_HAIG = conn_HAIG.cursor()
+
+
+
+# get all ID terminal of Viasat data
+obu = pd.read_sql_query('''
+                        SELECT *                                          
+                        FROM obu                        
+                        ''', conn_HAIG)
+
+
+
+# get all ID terminal of Viasat data
+I3_BMW = pd.read_sql_query('''
+                        SELECT
+                        idterm, idvehcategory, brand, anno                        
+                        FROM obu
+                        WHERE idvehcategory ILIKE 'i3%' and
+                        brand = 'BMW'
+                        ''', conn_HAIG)
+
+
+# get all ID terminal of Viasat data
+AAA = pd.read_sql_query('''
+                        SELECT
+                        idterm, idvehcategory, brand, anno                    
+                        FROM obu
+                        WHERE idvehcategory ILIKE 'e%' 
+                        ''', conn_HAIG)
+
+
+# get all ID terminal of Viasat data
+electric_veh = pd.read_sql_query('''
+                        SELECT
+                        idterm, idvehcategory, brand, anno                      
+                        FROM obu
+                        WHERE idvehcategory ILIKE ANY(ARRAY['ELE%', 'leaf%', 'zoe%', 'IPACE%', 'model%'])
+                        ''', conn_HAIG)
+
+
+electric_veh = pd.concat([electric_veh, I3_BMW])
+
+
+
+# get all ID terminal of Viasat data
+idterms = pd.read_sql_query(
+    ''' SELECT DISTINCT idterm
+        FROM public.mapmatching ''', conn_HAIG)
+
+### transform into integers
+idterms['idterm'] = idterms['idterm'].astype('int')
+### check if IDs of Electriv vehicles are within the map-matched vehicles
+matched_IDTERMS = electric_veh[electric_veh.idterm.isin(list(pd.to_numeric(idterms.idterm)))]
+

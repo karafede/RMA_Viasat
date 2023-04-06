@@ -15,7 +15,16 @@ output:
   
 *<br/><br/>*
 
-```{r, message = FALSE, echo = FALSE, warning = FALSE, fig.width=9,fig.height=5,  fig.cap = "**Figura 1.** Accuracy Catania"}
+```{r, message = FALSE, echo = FALSE, warning = FALSE, fig.width=9,fig.height=5,  fig.cap = "**Figura 1.** xxxxxx"}
+
+
+### TO DO....statistiche varie:
+# 1) numero medio di viaggi (weekend on and weekdays)
+# 2) percorrenze e tempi medie giornaliere (km)
+# 3) percorrenza media di un viaggio
+# 4) durata viaggio
+# 5) medium GYRATION radius
+
 
 
 
@@ -59,7 +68,7 @@ conn_HAIG <- dbConnect(drv, dbname = "HAIG_ROMA",
                        user = "postgres", password = "superuser")
 
 ## list all TABLES
-dbListTables(conn_HAIG)
+# dbListTables(conn_HAIG)
 
 # conn_HAIG <- dbConnect(drv, dbname = "HAIG_Viasat_CT",
 #                        host = "10.0.0.1", port = 5432,       
@@ -101,14 +110,16 @@ all_idterm = dbGetQuery(conn_HAIG, "SELECT idterm
 #                                FROM nights_py
 #                                       ")
 
-##### find dupicates of "idterm"
+##### find duplicates of "idterm"
 duplicated <- all_idterm %>%
    filter(duplicated(idterm) | duplicated(idterm, fromLast = TRUE))
  
 
+                                   
 
 
-## join "vehicle type" from the table "idterm_portata" (to get vehitype)
+
+# join "vehicle type" from the table "idterm_portata" (to get vehitype)
 route = dbGetQuery(conn_HAIG, "SELECT route.idtrajectory,
                                       route.idterm,
                                       route.tripdistance_m,
@@ -116,29 +127,67 @@ route = dbGetQuery(conn_HAIG, "SELECT route.idtrajectory,
                                       route.breaktime_s,
                                       route.triptime_s,
                                       route.deviation_pos_m,
+                                      route.diff_last_next_progr,
+                                      route.border_flag,
                                       idterm_portata.vehtype
                                FROM route
                                LEFT JOIN idterm_portata
                                     ON route.idterm = idterm_portata.idterm
                                       ")
 
+# route_FK = dbGetQuery(conn_HAIG, "SELECT route.idtrajectory,
+#                                       route.idterm,
+#                                       route.tripdistance_m,
+#                                       route.timedate_o,
+#                                       route.breaktime_s,
+#                                       route.triptime_s,
+#                                       route.border_flag,
+#                                       idterm_portata.vehtype,
+#                                       route.checkcode
+#                                FROM route
+#                                LEFT JOIN idterm_portata
+#                                     ON route.idterm = idterm_portata.idterm
+#                                       ")
+# 
+# write.csv(route_FK, "route_FK.csv")
 
-some_routes = dbGetQuery(conn_HAIG, "SELECT route.idtrajectory,
-                                      route.idterm,
-                                      route.tripdistance_m,
-                                      route.timedate_o,
-                                      route.breaktime_s,
-                                      route.triptime_s,
-                                      route.deviation_pos_m,
-                                      idterm_portata.vehtype
-                               FROM route
-                               LEFT JOIN idterm_portata
-                                    ON route.idterm = idterm_portata.idterm
-                                WHERE vehtype = 1
-                                    LIMIT 10
-                                      ")
 
-write.csv(some_routes, "some_routes.csv")
+# route = dbGetQuery(conn_HAIG, "SELECT route_new.idtrajectory,
+#                                       route_new.idterm,
+#                                       route_new.tripdistance_m,
+#                                       route_new.timedate_o,
+#                                       route_new.breaktime_s,
+#                                       route_new.triptime_s,
+#                                       route_new.deviation_pos_m,
+#                                       route_new.diff_last_next_progr,
+#                                       route_new.border_flag,
+#                                       idterm_portata.vehtype
+#                                FROM route_new
+#                                LEFT JOIN idterm_portata
+#                                     ON route_new.idterm = idterm_portata.idterm
+#                                       ")
+
+
+# some_routes = dbGetQuery(conn_HAIG, "SELECT route.idtrajectory,
+#                                       route.idterm,
+#                                       route.tripdistance_m,
+#                                       route.timedate_o,
+#                                       route.breaktime_s,
+#                                       route.triptime_s,
+#                                       route.deviation_pos_m,
+#                                       idterm_portata.vehtype
+#                                FROM route
+#                                LEFT JOIN idterm_portata
+#                                     ON route.idterm = idterm_portata.idterm
+#                                 WHERE vehtype = 1
+#                                     LIMIT 10
+#                                       ")
+# 
+# write.csv(some_routes, "some_routes.csv")
+
+route_border <- route %>%
+  group_by(border_flag)%>%
+  summarise(counts = length(border_flag))
 
 
 distinct_route <- route %>%
@@ -157,34 +206,13 @@ route <- route[complete.cases(route), ]
 ## speed
 route$speed_trip = (route$tripdistance_m/1000)/(route$triptime_s/3600)  ## km/h
 route <- route %>%
-  filter(speed_trip > 0 & speed_trip < 240)
-
-
-#### Istogramma tutti i viaggi con deviazione della posizione con intervalli di 5, 10, 40, 1000, 1000 metri
-
-# BBB <- NULL
-# bin_dev = c(5,10,40,100,1000)
-# 
-# for (i in 1:length(bin_dev)){
-#   if (i==1){
-#     AAA <- route %>%
-#       filter(deviation_pos_m <= bin_dev[i])  %>%
-#       summarise(counts = length(idtrajectory))
-#   }else{
-#     AAA <- route %>%
-#       filter(deviation_pos_m <= bin_dev[i] & deviation_pos_m >= bin_dev[i-1]) %>%
-#       summarise(counts = length(idtrajectory))
-#    
-#   }
-#   BBB<- rbind(BBB, AAA)
-#   
-# }
+  filter(speed_trip > 1 & speed_trip < 240)
 
 
 route <- as.data.frame(route)
 
 BBB <- NULL
-bin_dev = c(5,10,40,100,1000)  ## deviations bins in meters
+bin_dev = c(5,10,40,100,1000,10000, 100000)  ## deviations bins in meters
 
 for (i in 1:length(bin_dev)){
   AAA <- route %>%
@@ -221,7 +249,7 @@ p <- ggplot(data = deviations,
     theme(axis.title.x = element_text(face="bold", colour="black", size=15),
           axis.text.x  = element_text(angle=0, vjust=0.5, size=15, hjust = 0.5)) + 
     # scale_x_continuous(breaks=c(0, 5, 10, 15, 20)) +
-  ggtitle("Bias larger than 5, 10, 40, 100 and 1000 meters") + 
+  ggtitle("Bias larger than 5, 10, 40, 100 and 1000 meters, 10 and 100 km") + 
     theme(plot.title = element_text(lineheight=.8, face="bold"))
 p
 
@@ -231,21 +259,24 @@ p
 *<br/><br/>*
 
 
-```{r, message = FALSE, echo = FALSE, warning = FALSE, fig.width=9,fig.height=5,  fig.cap = "**Figura 2.** Accuracy Catania"}
 
+```{r, message = FALSE, echo = FALSE, warning = FALSE, fig.width=9,fig.height=5,  fig.cap = "**Figura 2.** xxxx"}
 
+route$vehtype <- gsub("1","Car", (route$vehtype))
+route$vehtype <- gsub("2","Fleet", (route$vehtype))
 
 ### distribution of the bias between the end position of a trip and the starting position o a new trip
 ### plot a distribution
 p <- ggplot(route, aes(x = deviation_pos_m)) +
   theme_bw() +
   geom_density(stat = 'bin') +
+  facet_wrap( ~ vehtype, nrow = 2) +
   scale_x_continuous(trans='log10') +
   theme(legend.title=element_blank()) + 
   aes(y=stat(count)/sum(stat(count))) + 
   scale_y_continuous(labels = scales::percent) +
   theme_bw() +
-  theme( strip.text = element_text(size = 20)) +
+  theme( strip.text = element_text(size = 10)) +
   guides(fill=FALSE) +
   theme(axis.text.x=element_text(angle=0,hjust=0.5,vjust=1, size=15)) +
   theme(axis.text.x=element_text(size=15, colour = "black")) +
@@ -254,9 +285,9 @@ p <- ggplot(route, aes(x = deviation_pos_m)) +
   ylab("frequency (%)") +
   # xlim(0,100)+
   geom_vline(xintercept = 10, col="red", lty=2, size=1) +
-  geom_vline(xintercept = 150, col="blue", lty=2, size=1) +
-  geom_text(aes(x = 12 , y = 0.15 , label = "10 m"), size = 4) +
-  geom_text(aes(x = 100 , y = 0.15 , label = "150 m"), size = 4) +
+  geom_vline(xintercept = 140, col="blue", lty=2, size=1) +
+  geom_text(aes(x = 15 , y = 0.15 , label = "10 m"), size = 4) +
+  geom_text(aes(x = 170 , y = 0.15 , label = "150 m"), size = 4) +
   theme(axis.title.y = element_text(face="bold", colour="black", size=15),
         axis.text.y  = element_text(angle=0, vjust=0.5, size=15, colour="black")) +
   ggtitle("Bias between end-start of new trip") +
@@ -268,9 +299,200 @@ p
 
 
 *<br/><br/>*
+*<br/><br/>*
 
 
-```{r, message = FALSE, echo = FALSE, warning = FALSE, fig.width=9,fig.height=5,  fig.cap = "**Figura 2.** Accuracy Catania"}
+```{r, message = FALSE, echo = FALSE, warning = FALSE, fig.width=9,fig.height=5,  fig.cap = "**Figura 2.** xxxxxx "}
+
+
+
+## scatter plot between bias and next progressive for each trip (idtrajectory) ###
+## only consider cars and NOT fleet
+
+route_cars <- route %>%
+  filter(vehtype == "1" & diff_last_next_progr <= 500000)
+
+p <- ggplot(route, aes(x = diff_last_next_progr)) +
+  theme_bw() +
+  geom_density(stat = 'bin') +
+  facet_wrap( ~ vehtype, nrow = 2) +
+  scale_x_continuous(trans='log10') +
+  theme(legend.title=element_blank()) + 
+  aes(y=stat(count)/sum(stat(count))) + 
+  scale_y_continuous(labels = scales::percent) +
+  theme_bw() +
+  theme( strip.text = element_text(size = 10)) +
+  guides(fill=FALSE) +
+  theme(axis.text.x=element_text(angle=0,hjust=0.5,vjust=1, size=15)) +
+  theme(axis.text.x=element_text(size=15, colour = "black")) +
+  theme(axis.title.x = element_text(face="bold", colour="black", size=15)) +
+  xlab("diff. progressive between trips (meters)") +
+  ylab("frequency (%)") +
+  # xlim(0,100)+
+  geom_vline(xintercept = 100, col="red", lty=2, size=1) +
+  geom_vline(xintercept = 200, col="blue", lty=2, size=1) +
+  geom_vline(xintercept = 300, col="red", lty=2, size=1) +
+  geom_vline(xintercept = 500, col="grey", lty=2, size=1) +
+  geom_vline(xintercept = 1000, col="red", lty=2, size=1) +
+  geom_vline(xintercept = 2000, col="blue", lty=2, size=1) +
+  geom_vline(xintercept = 4000, col="grey", lty=2, size=1) +
+  geom_vline(xintercept = 5000, col="black", lty=2, size=1) +
+  #geom_vline(xintercept = 10000, col="black", lty=2, size=1) +
+  # geom_text(aes(x = 15 , y = 0.15 , label = "10 m"), size = 4) +
+  # geom_text(aes(x = 170 , y = 0.15 , label = "150 m"), size = 4) +
+  theme(axis.title.y = element_text(face="bold", colour="black", size=15),
+        axis.text.y  = element_text(angle=0, vjust=0.5, size=15, colour="black")) +
+  ggtitle("Diff progressive between two consecutive trips") +
+  theme(plot.title = element_text(lineheight=.8, face="bold", size = 15))
+p
+
+
+
+
+```
+
+
+
+*<br/><br/>*
+
+
+*<br/><br/>*
+
+
+```{r, message = FALSE, echo = FALSE, warning = FALSE, fig.width=9,fig.height=5,  fig.cap = "**Figura 2.** xxxxxx "}
+
+
+route_fleet <- route %>%
+  filter(vehtype == "2" & diff_last_next_progr <= 500000)
+
+p <- ggplot(route_fleet, aes(x = diff_last_next_progr)) +
+  theme_bw() +
+  geom_density(stat = 'bin') +
+  scale_x_continuous(trans='log10') +
+  theme(legend.title=element_blank()) + 
+  aes(y=stat(count)/sum(stat(count))) + 
+  scale_y_continuous(labels = scales::percent) +
+  theme_bw() +
+  theme( strip.text = element_text(size = 10)) +
+  guides(fill=FALSE) +
+  theme(axis.text.x=element_text(angle=0,hjust=0.5,vjust=1, size=15)) +
+  theme(axis.text.x=element_text(size=15, colour = "black")) +
+  theme(axis.title.x = element_text(face="bold", colour="black", size=15)) +
+  xlab("diff. progressive between trips (meters)") +
+  ylab("frequency (%)") +
+  # xlim(0,100)+
+  geom_vline(xintercept = 1000, col="red", lty=2, size=1) +
+  geom_vline(xintercept = 2000, col="red", lty=2, size=1) +
+  geom_vline(xintercept = 3200, col="blue", lty=2, size=1) +
+  geom_vline(xintercept = 5200, col="grey", lty=2, size=1) +
+  geom_vline(xintercept = 10000, col="black", lty=2, size=1) +
+  # geom_text(aes(x = 15 , y = 0.15 , label = "10 m"), size = 4) +
+  # geom_text(aes(x = 170 , y = 0.15 , label = "150 m"), size = 4) +
+  theme(axis.title.y = element_text(face="bold", colour="black", size=15),
+        axis.text.y  = element_text(angle=0, vjust=0.5, size=15, colour="black")) +
+  ggtitle("Diff progressive between two consecutive trips (fleet)") +
+  theme(plot.title = element_text(lineheight=.8, face="bold", size = 13))
+p
+
+
+
+
+```
+
+
+
+
+```{r, message = FALSE, echo = FALSE, warning = FALSE, fig.width=9,fig.height=5,  fig.cap = "**Figura 2.** xxxxxx "}
+
+
+
+## scatter plot between Diff between last and next progressive between two consecutive trips (all vehicles) AND trip speed ###
+## only consider cars and NOT fleet
+
+#   p <- ggplot(route_cars, aes(x= speed_trip, y = diff_last_next_progr)) +
+#        geom_point( color = "darkred", linetype="twodash",
+#               lwd=1.5) +
+#       scale_x_continuous(trans='log10') +
+#       # scale_y_continuous(trans='log10') +
+#       # geom_smooth() +
+#       theme_bw() +
+#       # xlim(0, max(route_cars$deviation_pos_m)) +
+#       # ylim(0, 100) +
+#       theme_bw() +
+#       theme( strip.text = element_text(size = 20)) +
+#       guides(fill=FALSE) +
+#       theme(axis.text.x=element_text(angle=0,hjust=0.5,vjust=1, size=15)) +
+#       theme(axis.text.x=element_text(size=15, colour = "black")) +
+#       theme(axis.title.x = element_text(face="bold", colour="black", size=15)) +
+#       xlab("speed trip (km/h)") +
+#       ylab("diff. last next progressive (meters)") +
+#       # xlim(0,100)+
+#       # geom_vline(xintercept = 10, col="red", lty=2, size=1) +
+#       # geom_vline(xintercept = 140, col="blue", lty=2, size=1) +
+#       # geom_text(aes(x = 15 , y = 0.15 , label = "10 m"), size = 4) +
+#       # geom_text(aes(x = 170 , y = 0.15 , label = "150 m"), size = 4) +
+#       theme(axis.title.y = element_text(face="bold", colour="black", size=15),
+#             axis.text.y  = element_text(angle=0, vjust=0.5, size=15, colour="black")) +
+#       ggtitle("Diff progressive between two consecutive trips VS trip speed (cars)") +
+#       theme(plot.title = element_text(lineheight=.8, face="bold", size = 14))
+# p
+
+
+
+
+```
+
+
+
+*<br/><br/>*
+
+
+
+```{r, message = FALSE, echo = FALSE, warning = FALSE, fig.width=9,fig.height=5,  fig.cap = "**Figura 2.** xxxxxx "}
+
+
+
+## scatter plot between Diff between last and next progressive between two consecutive trips (all vehicles) AND trip speed ###
+## only consider cars and NOT fleet
+
+#   p <- ggplot(route_cars, aes(x= deviation_pos_m, y = diff_last_next_progr)) +
+#        geom_point( color = "darkred", linetype="twodash",
+#               lwd=1.5) +
+#       scale_x_continuous(trans='log10') +
+#       # scale_y_continuous(trans='log10') +
+#       # geom_smooth() +
+#       theme_bw() +
+#       # xlim(0, max(route_cars$deviation_pos_m)) +
+#       # ylim(0, 100) +
+#       theme_bw() +
+#       theme( strip.text = element_text(size = 20)) +
+#       guides(fill=FALSE) +
+#       theme(axis.text.x=element_text(angle=0,hjust=0.5,vjust=1, size=15)) +
+#       theme(axis.text.x=element_text(size=15, colour = "black")) +
+#       theme(axis.title.x = element_text(face="bold", colour="black", size=15)) +
+#       xlab("bias distance (meters)") +
+#       ylab("diff. last next progressive (meters)") +
+#       # xlim(0,100)+
+#       # geom_vline(xintercept = 10, col="red", lty=2, size=1) +
+#       # geom_vline(xintercept = 140, col="blue", lty=2, size=1) +
+#       # geom_text(aes(x = 15 , y = 0.15 , label = "10 m"), size = 4) +
+#       # geom_text(aes(x = 170 , y = 0.15 , label = "150 m"), size = 4) +
+#       theme(axis.title.y = element_text(face="bold", colour="black", size=15),
+#             axis.text.y  = element_text(angle=0, vjust=0.5, size=15, colour="black")) +
+#      ggtitle("Diff progressive between two consecutive trips VERSUS BIAS end-start of new trip") +
+#       theme(plot.title = element_text(lineheight=.8, face="bold", size = 14))
+# p
+
+
+
+
+```
+
+
+
+*<br/><br/>*
+
+```{r, message = FALSE, echo = FALSE, warning = FALSE, fig.width=9,fig.height=5,  fig.cap = "**Figura 2.** xxxxxx"}
 
 
 
@@ -279,12 +501,13 @@ p
 p <- ggplot(route, aes(x = speed_trip)) +
   theme_bw() +
   geom_density(stat = 'bin') +
+  facet_wrap( ~ vehtype, nrow = 2) +
   scale_x_continuous(trans='log10') +
   theme(legend.title=element_blank()) + 
   aes(y=stat(count)/sum(stat(count))) + 
   scale_y_continuous(labels = scales::percent) +
   theme_bw() +
-  theme( strip.text = element_text(size = 20)) +
+  theme( strip.text = element_text(size = 10)) +
   guides(fill=FALSE) +
   theme(axis.text.x=element_text(angle=0,hjust=0.5,vjust=1, size=15)) +
   theme(axis.text.x=element_text(size=15, colour = "black")) +
@@ -292,14 +515,17 @@ p <- ggplot(route, aes(x = speed_trip)) +
   xlab("speed (km/h)") +
   ylab("frequency (%)") +
   # xlim(0,100)+
-  #  geom_vline(xintercept = 20, col="blue", lty=2, size=1) +
+   geom_vline(xintercept = 5, col="blue", lty=2, size=1) +
+   geom_vline(xintercept = 20, col="black", lty=2, size=1) +
    geom_vline(xintercept = 30, col="red", lty=2, size=1) +
   # geom_vline(xintercept = 10, col="blue", lty=2, size=1) +
-  # geom_text(aes(x = 12 , y = 0.15 , label = "10 m"), size = 4) +
+   geom_text(aes(x = 6 , y = 0.15 , label = "5 km/h"), size = 4) +
+   geom_text(aes(x = 22 , y = 0.17 , label = "20 km/h"), size = 4) +
+   geom_text(aes(x = 32 , y = 0.20 , label = "30 km/h"), size = 4) +
   theme(axis.title.y = element_text(face="bold", colour="black", size=15),
         axis.text.y  = element_text(angle=0, vjust=0.5, size=15, colour="black")) +
   ggtitle("distribution of mean speed during the trips") +
-  theme(plot.title = element_text(lineheight=.8, face="bold", size = 20))
+  theme(plot.title = element_text(lineheight=.8, face="bold", size = 18))
 p
 
 
@@ -315,59 +541,7 @@ p
 
 
 
-
-```{r, message = FALSE, echo = FALSE, warning = FALSE, fig.width=9,fig.height=5,  fig.cap = "**Figura 3.** Instant Speed"}
-
-
-# routecheck = dbGetQuery(conn_HAIG, "SELECT routecheck.speed,
-#                                       routecheck.vehtype
-#                                FROM routecheck
-#                                       ")
-# 
-# 
-# 
-# routecheck <- routecheck %>%
-#   filter(speed > 5)
-# 
-# ## distribution of INSTANT SPEEDS ###
-# ### plot a distribution
-# p <- ggplot(routecheck, aes(x = speed)) +
-#   theme_bw() +
-#   geom_density(stat = 'bin') +
-#   scale_x_continuous(trans='log10') +
-#   theme(legend.title=element_blank()) + 
-#   aes(y=stat(count)/sum(stat(count))) + 
-#   scale_y_continuous(labels = scales::percent) +
-#   theme_bw() +
-#   theme( strip.text = element_text(size = 20)) +
-#   guides(fill=FALSE) +
-#   theme(axis.text.x=element_text(angle=0,hjust=0.5,vjust=1, size=15)) +
-#   theme(axis.text.x=element_text(size=15, colour = "black")) +
-#   theme(axis.title.x = element_text(face="bold", colour="black", size=15)) +
-#   xlab("velocità (km/h)") +
-#   ylab("frequency (%)") +
-#   # xlim(0,100)+
-#   # geom_vline(xintercept = 25, col="blue", lty=2, size=0.5) +
-#   geom_vline(xintercept = 30, col="blue", lty=2, size=0.5) +
-#   geom_vline(xintercept = 50, col="red", lty=2, size=0.5) +
-#   # geom_vline(xintercept = 10, col="blue", lty=2, size=1) +
-#   # geom_text(aes(x = 12 , y = 0.15 , label = "10 m"), size = 4) +
-#   theme(axis.title.y = element_text(face="bold", colour="black", size=15),
-#         axis.text.y  = element_text(angle=0, vjust=0.5, size=15, colour="black")) +
-#   ggtitle("distribuzione delle velocità istantanee") +
-#   theme(plot.title = element_text(lineheight=.8, face="bold", size = 15))
-# p
-
-
-
-
-```
-
-*<br/><br/>*
-
-
-
-```{r, message = FALSE, echo = FALSE, warning = FALSE, fig.width=9,fig.height=5,  fig.cap = "**Figura 4.** Tempo di sosta"}
+```{r, message = FALSE, echo = FALSE, warning = FALSE, fig.width=9,fig.height=5,  fig.cap = "**Figura 4.** xxxxxx"}
 
 ## convert breaktime_s into minutes
 route$breaktime_m <- (route$breaktime_s)/60
@@ -377,12 +551,13 @@ route$breaktime_m <- (route$breaktime_s)/60
 p <- ggplot(route, aes(x = breaktime_m)) +
   theme_bw() +
   geom_density(stat = 'bin') +
+  facet_wrap( ~ vehtype, nrow = 2) +
   scale_x_continuous(trans='log10') +
   theme(legend.title=element_blank()) + 
   aes(y=stat(count)/sum(stat(count))) + 
   scale_y_continuous(labels = scales::percent) +
   theme_bw() +
-  theme( strip.text = element_text(size = 20)) +
+  theme( strip.text = element_text(size = 10)) +
   guides(fill=FALSE) +
   theme(axis.text.x=element_text(angle=0,hjust=0.5,vjust=1, size=15)) +
   theme(axis.text.x=element_text(size=15, colour = "black")) +
@@ -392,11 +567,17 @@ p <- ggplot(route, aes(x = breaktime_m)) +
   # xlim(0,100)+
   #  geom_vline(xintercept = 20, col="blue", lty=2, size=1) +
   geom_vline(xintercept = 15, col="red", lty=2, size=0.5) +
+  geom_vline(xintercept = 5, col="red", lty=2, size=0.5) +
   geom_vline(xintercept = 120, col="red", lty=2, size=0.5) +
+    geom_vline(xintercept = 550, col="blue", lty=2, size=0.5) +
   geom_vline(xintercept = 800, col="blue", lty=2, size=0.5) +
+    geom_vline(xintercept = 1000, col="blue", lty=2, size=0.5) +
   geom_vline(xintercept = 2500, col="blue", lty=2, size=0.5) +
   # geom_vline(xintercept = 10, col="blue", lty=2, size=1) +
-  # geom_text(aes(x = 12 , y = 0.15 , label = "10 m"), size = 4) +
+ geom_text(aes(x = 850 , y = 0.03 , label = "800 min"), size = 4) +
+  geom_text(aes(x = 60 , y = 0.04 , label = "60 min"), size = 4) +
+   geom_text(aes(x = 5 , y = 0.04 , label = "5 min"), size = 4) +
+   geom_text(aes(x = 15 , y = 0.04 , label = "15 min"), size = 4) +
   theme(axis.title.y = element_text(face="bold", colour="black", size=15),
         axis.text.y  = element_text(angle=0, vjust=0.5, size=15, colour="black")) +
   ggtitle("distribuzione dei tempi di sosta") +
@@ -425,7 +606,7 @@ route_festivi <- route_festivi %>%
 
 
 
-```{r, message = FALSE, echo = FALSE, warning = FALSE, fig.width=9,fig.height=5,  fig.cap = "**Figura 5.** Tempo di viaggio"}
+```{r, message = FALSE, echo = FALSE, warning = FALSE, fig.width=9,fig.height=5,  fig.cap = "**Figura 5.** xxxxxx"}
 
 ## convert triptime_s into minutes
 route$triptime_m <- (route$triptime_s)/60
@@ -435,12 +616,13 @@ route$triptime_m <- (route$triptime_s)/60
 p <- ggplot(route, aes(x = triptime_m)) +
   theme_bw() +
   geom_density(stat = 'bin') +
+  facet_wrap( ~ vehtype, nrow = 2) +
   scale_x_continuous(trans='log10') +
   theme(legend.title=element_blank()) + 
   aes(y=stat(count)/sum(stat(count))) + 
   scale_y_continuous(labels = scales::percent) +
   theme_bw() +
-  theme( strip.text = element_text(size = 20)) +
+  theme( strip.text = element_text(size = 10)) +
   guides(fill=FALSE) +
   theme(axis.text.x=element_text(angle=0,hjust=0.5,vjust=1, size=15)) +
   theme(axis.text.x=element_text(size=15, colour = "black")) +
@@ -450,9 +632,9 @@ p <- ggplot(route, aes(x = triptime_m)) +
   # xlim(0,100)+
   geom_vline(xintercept = 10, col="red", lty=2, size=0.5) +
   geom_vline(xintercept = 15, col="blue", lty=2, size=0.5) +
-  geom_vline(xintercept = 24, col="red", lty=2, size=0.5) +
+  geom_vline(xintercept = 25, col="red", lty=2, size=0.5) +
   # geom_vline(xintercept = 10, col="blue", lty=2, size=1) +
-  # geom_text(aes(x = 12 , y = 0.15 , label = "10 m"), size = 4) +
+  geom_text(aes(x = 27 , y = 0.15 , label = "25 min"), size = 4) +
   theme(axis.title.y = element_text(face="bold", colour="black", size=15),
         axis.text.y  = element_text(angle=0, vjust=0.5, size=15, colour="black")) +
   ggtitle("distribuzione dei tempi di viaggio") +
@@ -478,12 +660,66 @@ route$tripdistance_km <- route$tripdistance_m/1000
 p <- ggplot(route, aes(x = tripdistance_km)) +
   theme_bw() +
   geom_density(stat = 'bin') +
+  facet_wrap( ~ vehtype, nrow = 2) +
   scale_x_continuous(trans='log10') +
   theme(legend.title=element_blank()) + 
   aes(y=stat(count)/sum(stat(count))) + 
   scale_y_continuous(labels = scales::percent) +
   theme_bw() +
-  theme( strip.text = element_text(size = 20)) +
+  theme( strip.text = element_text(size = 10)) +
+  guides(fill=FALSE) +
+  theme(axis.text.x=element_text(angle=0,hjust=0.5,vjust=1, size=15)) +
+  theme(axis.text.x=element_text(size=15, colour = "black")) +
+  theme(axis.title.x = element_text(face="bold", colour="black", size=15)) +
+  xlab("distanza (km)") +
+  ylab("frequenza (%)") +
+  # xlim(0,100)+
+  geom_vline(xintercept = 0.1, col="blue", lty=2, size=0.5) +
+  geom_vline(xintercept = 0.2, col="red", lty=2, size=0.5) +
+  geom_vline(xintercept = 0.3, col="grey", lty=2, size=0.5) +
+  geom_vline(xintercept = 0.4, col="black", lty=2, size=0.5) +
+  geom_vline(xintercept = 0.5, col="black", lty=2, size=0.5) +
+  geom_vline(xintercept = 0.6, col="green", lty=2, size=0.5) +
+  geom_vline(xintercept = 1, col="blue", lty=2, size=0.5) +
+  geom_vline(xintercept = 2, col="blue", lty=2, size=0.5) +
+  geom_vline(xintercept = 6, col="blue", lty=2, size=0.5) +
+  # geom_vline(xintercept = 10, col="blue", lty=2, size=1) +
+  geom_text(aes(x = 6 , y = 0.13 , label = "6 km"), size = 4) +
+  theme(axis.title.y = element_text(face="bold", colour="black", size=15),
+        axis.text.y  = element_text(angle=0, vjust=0.5, size=15, colour="black")) +
+  ggtitle("distribuzione della distanza percorsa per viaggio") +
+  theme(plot.title = element_text(lineheight=.8, face="bold", size = 15))
+p
+
+
+
+```
+
+
+*<br/><br/>*
+*<br/><br/>*
+
+
+
+
+```{r, message = FALSE, echo = FALSE, warning = FALSE, fig.width=9,fig.height=5,  fig.cap = "**Figura 2.** Distanza di Viaggio"}
+
+route_small_distances <- route %>%
+  filter(tripdistance_km <= 0.5 & triptime_s > 60)
+
+  
+## distribution of the tripdistance_m ###
+### plot a distribution
+p <- ggplot(route_small_distances, aes(x = tripdistance_km)) +
+  theme_bw() +
+  geom_density(stat = 'bin') +
+  facet_wrap( ~ vehtype, nrow = 2) +
+  scale_x_continuous(trans='log10') +
+  theme(legend.title=element_blank()) + 
+  aes(y=stat(count)/sum(stat(count))) + 
+  scale_y_continuous(labels = scales::percent) +
+  theme_bw() +
+  theme( strip.text = element_text(size = 10)) +
   guides(fill=FALSE) +
   theme(axis.text.x=element_text(angle=0,hjust=0.5,vjust=1, size=15)) +
   theme(axis.text.x=element_text(size=15, colour = "black")) +
@@ -498,17 +734,34 @@ p <- ggplot(route, aes(x = tripdistance_km)) +
   # geom_text(aes(x = 12 , y = 0.15 , label = "10 m"), size = 4) +
   theme(axis.title.y = element_text(face="bold", colour="black", size=15),
         axis.text.y  = element_text(angle=0, vjust=0.5, size=15, colour="black")) +
-  ggtitle("distribuzione della distanza percorsa per viaggio") +
+  ggtitle("distribuzione della distanza percorsa per viaggio (viaggi < 500m)") +
   theme(plot.title = element_text(lineheight=.8, face="bold", size = 15))
 p
 
+# idterm = '5403701'
+# idtrajectory = '87072848'   # triptine = 266.60000 minutes (about 4.5 hours travel a distance of 100 meters)
 
+selected_idterm = dbGetQuery(conn_HAIG, "SELECT * 
+                                          FROM public.routecheck 
+                                          WHERE idterm = '5403701' and
+                                              idtrajectory = '87072848' ")
+
+selected_idterm_5403701 = dbGetQuery(conn_HAIG, "SELECT * 
+                                          FROM public.routecheck 
+                                          WHERE idterm = '5403701' ")
+
+
+selected_idterm_5438102 = dbGetQuery(conn_HAIG, "SELECT * 
+                                          FROM public.routecheck 
+                                          WHERE idterm = '5438102' and
+                                     idtrajectory = '89701185' ")
+
+selected_idterm_5438102 = dbGetQuery(conn_HAIG, "SELECT * 
+                                          FROM public.routecheck 
+                                          WHERE idterm = '5438102'  ")
 
 ```
 
-
-*<br/><br/>*
-*<br/><br/>*
 
 
 
@@ -569,7 +822,7 @@ levels(edges_stats_raw$stats) <- gsub("sum","numero totale di strade per categor
 *<br/><br/>*
 
 
-````{r, message = FALSE, echo = FALSE, warning = FALSE, fig.width=9,fig.height=5,  fig.cap ="**Figura 1.** Ripartizione delle categorie di strade nella provincia di Roma per un raggio di 70 km attorno al suo capoluogo. I numeri riportati all'interno indicano la percentuale relativa al numero ed alla lunghezza totale totale di strade."}
+```{r, message = FALSE, echo = FALSE, warning = FALSE, fig.width=9,fig.height=5,  fig.cap ="**Figura 1.** Ripartizione delle categorie di strade nella provincia di Roma per un raggio di 70 km attorno al suo capoluogo. I numeri riportati all'interno indicano la percentuale relativa al numero ed alla lunghezza totale totale di strade."}
 
 ################################
 ### summary stats by road ######
@@ -611,7 +864,7 @@ p <- ggplot(data = edges_stats_raw,
 *<br/><br/>*
 
 
-````{r, message = FALSE, echo = FALSE, warning = FALSE, fig.width=9,fig.height=5,  fig.cap ="**Figura 1.** ade."}
+```{r, message = FALSE, echo = FALSE, warning = FALSE, fig.width=9,fig.height=5,  fig.cap ="**Figura 1.** ade."}
 
 ###############################################
 ### map matching data 09 october 2019 #########

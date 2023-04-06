@@ -253,82 +253,79 @@ conn_HAIG.commit()
 
 ### change type of "idterm" from text to bigint
 cur_HAIG.execute("""
-ALTER TABLE public.routecheck_trenta ALTER COLUMN "idterm" TYPE bigint USING "idterm"::bigint
+ALTER TABLE public.routecheck_trenta_bis ALTER COLUMN "idterm" TYPE bigint USING "idterm"::bigint
 """)
 conn_HAIG.commit()
 
 cur_HAIG.execute("""
-CREATE index routecheck_trenta_id_idx on public.routecheck_trenta("id");
-""")
-conn_HAIG.commit()
-
-
-cur_HAIG.execute("""
-CREATE index routecheck_trenta_idterm_idx on public.routecheck_trenta("idterm");
-""")
-conn_HAIG.commit()
-
-
-
-cur_HAIG.execute("""
-CREATE index routecheck_trenta_TRIP_ID_idx on public.routecheck_trenta("TRIP_ID");
+CREATE index routecheck_trenta_bis_id_idx on public.routecheck_trenta_bis("id");
 """)
 conn_HAIG.commit()
 
 
 cur_HAIG.execute("""
-CREATE index routecheck_trenta_idtrajectory_ID_idx on public.routecheck_trenta("idtrajectory");
-""")
-conn_HAIG.commit()
-
-
-cur_HAIG.execute("""
-CREATE index routecheck_trenta_timedate_idx on public.routecheck_trenta("timedate");
-""")
-conn_HAIG.commit()
-
-
-cur_HAIG.execute("""
-CREATE index routecheck_trenta_grade_idx on public.routecheck_trenta("grade");
+CREATE index routecheck_trenta_bis_idterm_idx on public.routecheck_trenta_bis("idterm");
 """)
 conn_HAIG.commit()
 
 
 
 cur_HAIG.execute("""
-CREATE index routecheck_trenta_anomaly_idx on public.routecheck_trenta("anomaly");
+CREATE index routecheck_trenta_bis_TRIP_ID_idx on public.routecheck_trenta_bis("TRIP_ID");
 """)
 conn_HAIG.commit()
 
 
 cur_HAIG.execute("""
-CREATE index routecheck_trenta_speed_idx on public.routecheck_trenta("speed");
+CREATE index routecheck_trenta_bis_idtrajectory_ID_idx on public.routecheck_trenta_bis("idtrajectory");
 """)
 conn_HAIG.commit()
 
 
 cur_HAIG.execute("""
-CREATE index routecheck_trenta_lat_idx on public.routecheck_trenta(latitude);
+CREATE index routecheck_trenta_bis_timedate_idx on public.routecheck_trenta_bis("timedate");
 """)
 conn_HAIG.commit()
 
 
 cur_HAIG.execute("""
-CREATE index routecheck_trenta_lon_idx on public.routecheck_trenta(longitude);
+CREATE index routecheck_trenta_bis_grade_idx on public.routecheck_trenta_bis("grade");
+""")
+conn_HAIG.commit()
+
+
+
+cur_HAIG.execute("""
+CREATE index routecheck_trenta_bis_anomaly_idx on public.routecheck_trenta_bis("anomaly");
 """)
 conn_HAIG.commit()
 
 
 cur_HAIG.execute("""
-CREATE index routecheck_trenta_border_idx on public.routecheck_trenta(border);
+CREATE index routecheck_trenta_bis_speed_idx on public.routecheck_trenta_bis("speed");
+""")
+conn_HAIG.commit()
+
+
+cur_HAIG.execute("""
+CREATE index routecheck_trenta_bis_lat_idx on public.routecheck_trenta_bis(latitude);
+""")
+conn_HAIG.commit()
+
+
+cur_HAIG.execute("""
+CREATE index routecheck_trenta_bis_lon_idx on public.routecheck_trenta_bis(longitude);
+""")
+conn_HAIG.commit()
+
+
+cur_HAIG.execute("""
+CREATE index routecheck_trenta_bis_border_idx on public.routecheck_trenta_bis(border);
 """)
 conn_HAIG.commit()
 
 ####################################################################################
 ####################################################################################
-
-
-
 
 ### --->>>>>   routecheck cinque <<<<<----------------------------------------------
 ####################################################################################
@@ -431,14 +428,14 @@ engine = sal.create_engine('postgresql://postgres:superuser@10.1.0.1:5432/HAIG_R
 # long time run...
 ## create a consecutive ID for each row
 cur_HAIG.execute("""
-alter table "route_trenta" add id serial PRIMARY KEY
+alter table "route_trenta_bis" add id serial PRIMARY KEY
      """)
 conn_HAIG.commit()
 
 
 ## create an ndex on the "id" field
 cur_HAIG.execute("""
-CREATE index route_trenta_id_idx on public.route_trenta("id");
+CREATE index route_trenta_bis_id_idx on public.route_trenta_bis("id");
 """)
 conn_HAIG.commit()
 
@@ -446,49 +443,49 @@ conn_HAIG.commit()
 
 ### change type of "idterm" from text to bigint
 cur_HAIG.execute("""
-ALTER TABLE public.route_trenta ALTER COLUMN "idterm" TYPE bigint USING "idterm"::bigint
+ALTER TABLE public.route_trenta_bis ALTER COLUMN "idterm" TYPE bigint USING "idterm"::bigint
 """)
 conn_HAIG.commit()
 
 
 ### create index for 'idterm'
 cur_HAIG.execute("""
-CREATE index route_trenta_idterm_idx on public.route_trenta(idterm);
+CREATE index route_trenta_bis_idterm_idx on public.route_trenta_bis(idterm);
 """)
 conn_HAIG.commit()
 
 
 ### create index for 'idtrajectory'
 cur_HAIG.execute("""
-CREATE index route_trenta_idtrajectory_idx on public.route_trenta(idtrajectory);
+CREATE index route_trenta_bis_idtrajectory_idx on public.route_trenta_bis(idtrajectory);
 """)
 conn_HAIG.commit()
 
 
 ### create index for 'tripdistance_m'
 cur_HAIG.execute("""
-CREATE index route_trenta_tripdistance_idx on public.route_trenta(tripdistance_m);
+CREATE index route_trenta_bis_tripdistance_idx on public.route_trenta_bis(tripdistance_m);
 """)
 conn_HAIG.commit()
 
 
 ### create index for 'timedate_o'
 cur_HAIG.execute("""
-CREATE index route_trenta_timedate_idx on public.route_trenta(timedate_o);
+CREATE index route_trenta_bis_timedate_idx on public.route_trenta_bis(timedate_o);
 """)
 conn_HAIG.commit()
 
 
 ### create index for 'breaktime_s'
 cur_HAIG.execute("""
-CREATE index route_trenta_breaktime_idx on public.route_trenta(breaktime_s);
+CREATE index route_trenta_bis_breaktime_idx on public.route_trenta_bis(breaktime_s);
 """)
 conn_HAIG.commit()
 
 
 ### create index for 'triptime_s'
 cur_HAIG.execute("""
-CREATE index route_trenta_triptime_s_idx on public.route_trenta(triptime_s);
+CREATE index route_trenta_bis_triptime_s_idx on public.route_trenta_bis(triptime_s);
 """)
 conn_HAIG.commit()
 
@@ -496,13 +493,13 @@ conn_HAIG.commit()
 
 ### create index for 'deviation_pos_m'
 cur_HAIG.execute("""
-CREATE index route_trenta_deviation_pos_idx on public.route_trenta(deviation_pos_m);
+CREATE index route_trenta_bis_deviation_pos_idx on public.route_trenta_bis(deviation_pos_m);
 """)
 conn_HAIG.commit()
 
 ### create index for 'border_flag'
 cur_HAIG.execute("""
-CREATE index route_trenta_border_flag_idx on public.route_trenta(border_flag);
+CREATE index route_trenta_bis_border_flag_idx on public.route_trenta_bis(border_flag);
 """)
 conn_HAIG.commit()
 
@@ -758,6 +755,8 @@ cur_HAIG.execute("""
 CREATE index route_cinque_border_flag_idx on public.route_cinque(border_flag);
 """)
 conn_HAIG.commit()
+
+
 
 ######################################################################################
 ######################################################################################

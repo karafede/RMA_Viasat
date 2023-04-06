@@ -22,7 +22,7 @@ cur_HAIG = conn_HAIG.cursor()
 # get all ID terminal of Viasat data
 idterm = pd.read_sql_query(
     ''' SELECT DISTINCT "idterm" 
-        FROM public.routecheck_cinque ''', conn_HAIG)
+        FROM public.routecheck_trenta_bis ''', conn_HAIG)
 
 # make a list of all unique trips
 processed_idterms = list(idterm.idterm.unique())

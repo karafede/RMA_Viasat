@@ -6,7 +6,7 @@ def connect_RM2013():
     return(conn)
 def connect_RM2015():
     #Connect to an existing database
-    conn = psycopg2.connect(user="postgres", password="superuser", host="localhost", port="5432", database="EcoTripRM_2015")
+    conn = psycopg2.connect(user="postgres", password="superuser", host="10.0.0.1", port="5432", database="EcoTripRM_2015")
     return(conn)
 def connect_viasat():
     #Connect to an existing database
@@ -102,3 +102,4 @@ def connect_HAIG_ROMA():
     conn = psycopg2.connect(user="postgres", password="superuser", host="10.1.0.1",
                             port="5432", database="HAIG_ROMA", sslmode="disable", gssencmode="disable")
     return (conn)
+
